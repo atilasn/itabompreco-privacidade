@@ -1,0 +1,273 @@
+openapi: 3.0.3
+info:
+  title: NeoVision AI API
+  version: 0.1.0
+  description: |
+    Serviço de IA (Python) e integração com desktop/app.
+    Base path sugerido na instalação local: http://127.0.0.1:8080
+
+servers:
+  - url: http://127.0.0.1:8080
+    description: Local
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: health
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /ai/recognize:
+    post:
+      summary: Reconhecer rosto a partir de imagem (JPEG/PNG em base64 ou bytes)
+      operationId: recognizeFace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecognizeRequest"
+      responses:
+        "200":
+          description: Resultado do reconhecimento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecognizeResponse"
+        "400":
+          description: Payload inválido
+        "503":
+          description: Modelo não carregado
+
+  /automation/gate/open:
+    post:
+      summary: Solicitar abertura do portão (automação)
+      operationId: openGate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GateOpenRequest"
+      responses:
+        "200":
+          description: Comando aceito
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GateOpenResponse"
+        "403":
+          description: Não autorizado
+
+  /cameras:
+    get:
+      summary: Listar todas as câmeras
+      description: Nomes, IP, id (UUID) para usar em /status, etc.
+      operationId: listCameras
+      responses:
+        "200":
+          description: Lista (pode ser vazia)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CameraListItem"
+        "503":
+          description: MySQL inacessível
+    post:
+      summary: Adicionar câmara (IP e opções)
+      operationId: createCamera
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CameraCreateRequest"
+      responses:
+        "200":
+          description: Novo id e mensagem
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CameraCreateResponse"
+        "400":
+          description: IP inválido ou dados incorrectos
+        "503":
+          description: MySQL inacessível
+
+  /cameras/{cameraId}/status:
+    get:
+      summary: Ver estado (teste de vídeo RTSP, opcional)
+      description: Usa o id (UUID) devolvido na lista ou após criação.
+      operationId: getCameraStatus
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: probe
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+          description: Se false, não abre o stream RTSP (resposta mais rápida)
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CameraStatus"
+        "400":
+          description: UUID inválido
+        "404":
+          description: Câmara inexistente
+        "503":
+          description: MySQL inacessível
+
+components:
+  schemas:
+    RecognizeRequest:
+      type: object
+      required:
+        - image_base64
+      properties:
+        image_base64:
+          type: string
+          description: Imagem codificada em Base64 (sem data URL)
+        camera_id:
+          type: string
+          format: uuid
+          nullable: true
+
+    RecognizeResponse:
+      type: object
+      properties:
+        matched:
+          type: boolean
+        person_id:
+          type: string
+          format: uuid
+          nullable: true
+        person_name:
+          type: string
+          nullable: true
+        score:
+          type: number
+          format: float
+          nullable: true
+        model_name:
+          type: string
+          example: opencv_dnn_or_lbph
+
+    GateOpenRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+        token:
+          type: string
+          description: Token ou assinatura do desktop/app
+
+    GateOpenResponse:
+      type: object
+      properties:
+        accepted:
+          type: boolean
+        message:
+          type: string
+
+    CameraListItem:
+      type: object
+      required:
+        - id
+        - name
+        - ip_address
+        - is_enabled
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        ip_address:
+          type: string
+        http_port:
+          type: integer
+          nullable: true
+        rtsp_url:
+          type: string
+          nullable: true
+        onvif_endpoint:
+          type: string
+          nullable: true
+        is_enabled:
+          type: boolean
+        last_seen_utc:
+          type: string
+          format: date-time
+          nullable: true
+
+    CameraCreateRequest:
+      type: object
+      required:
+        - ip_address
+      properties:
+        name:
+          type: string
+          nullable: true
+          maxLength: 128
+        ip_address:
+          type: string
+          description: Obrigatório (IPv4/IPv6)
+        http_port:
+          type: integer
+          nullable: true
+          default: 80
+        rtsp_url:
+          type: string
+          nullable: true
+        onvif_endpoint:
+          type: string
+          nullable: true
+        is_enabled:
+          type: boolean
+          default: true
+
+    CameraCreateResponse:
+      type: object
+      required:
+        - id
+        - message
+      properties:
+        id:
+          type: string
+          format: uuid
+        message:
+          type: string
+
+    CameraStatus:
+      type: object
+      properties:
+        online:
+          type: boolean
+        last_seen_utc:
+          type: string
+          format: date-time
+          nullable: true
+        last_error:
+          type: string
+          nullable: true

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="google" content="notranslate" />
+  <title>NeoVision · Câmeras</title>
+  <link rel="stylesheet" href="/static/painel/dashboard.css" />
+</head>
+<body>
+  <div class="bg" aria-hidden="true"></div>
+  <div class="shell">
+    <header class="head">
+      <a class="brand" href="/painel">
+        <span class="logo" aria-hidden="true">◉</span>
+        <div>
+          <h1>Câmeras</h1>
+          <p class="sub">Rede e RTSP</p>
+        </div>
+      </a>
+      <a class="back-painel" href="/painel">← Painel</a>
+    </header>
+
+    <h2 class="page-title" style="margin-top:1.25rem">Câmeras</h2>
+    <p class="lead">
+      Usa <strong>Buscar câmeras na rede</strong> para descobrir IPs ONVIF na mesma LAN; regista no formulário e vê abaixo a lista com
+      <strong>nome</strong> e estado <strong>Online / Offline</strong> (actualizado ~12&nbsp;s, teste RTSP).
+    </p>
+
+    <section class="card" id="adicionar">
+      <h3>Nova câmara · registo pelo painel</h3>
+      <p>
+        Credenciais do stream opcionais na URL <code>rtsp://…</code>; ou cole uma RTSP completa.
+        <strong>Máscara/GW/DNS:</strong> apenas lembrete seu — configurar na página web da câmera/router.
+      </p>
+      <p class="field-hint" style="margin-bottom:0.6rem">
+        <strong>Buscar na rede:</strong> descobre câmaras ONVIF (servidor e equipamentos na mesma LAN, UDP). Nos resultados use «Usar este IP»
+        e depois <strong>Guardar na base NeoVision</strong>.
+      </p>
+      <div class="camera-toolbar" style="display:flex;flex-wrap:wrap;gap:0.5rem 0.75rem;align-items:center;margin-bottom:0.35rem">
+        <button type="button" class="btn-submit" style="background:#0f766e;color:#fff;border-color:#0d9488;font-weight:600" id="btn-discover-net">Buscar câmeras na rede</button>
+        <button type="button" class="btn-submit" id="btn-toggle-camera" aria-expanded="false" aria-controls="panel-camera-form">Adicionar câmera</button>
+      </div>
+      <div id="discover-out" class="feedback" style="display:none;margin-top:0.25rem;margin-bottom:0.5rem" role="status" aria-live="polite"></div>
+
+      <div id="panel-camera-form" class="collapsed">
+        <form id="camera-form" class="form-stack" style="margin-top:0.5rem" action="#" autocomplete="off">
+          <p class="sec-title">Identificação</p>
+          <div class="field">
+            <label for="nome">Nome <span class="opt">(opcional)</span></label>
+            <input id="nome" type="text" maxlength="128" placeholder="Ex.: Entrada casa" />
+          </div>
+
+          <p class="sec-title">Rede da câmera na sua LAN</p>
+
+          <div class="field">
+            <label for="ip">Endereço IP <span style="color:#b91c1c">*</span></label>
+            <input id="ip" type="text" required placeholder="192.168.1.64" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="hint_mask">Máscara de rede <span class="opt">(guia só para si)</span></label>
+            <input id="hint_mask" type="text" placeholder="255.255.255.0" autocomplete="off" />
+          </div>
+          <div class="form-grid2 cols2">
+            <div class="field">
+              <label for="hint_gw">Gateway</label>
+              <input id="hint_gw" type="text" placeholder="192.168.1.1" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="hint_dns">DNS</label>
+              <input id="hint_dns" type="text" placeholder="DNS do router" autocomplete="off" />
+            </div>
+          </div>
+          <div class="form-grid2 cols2">
+            <div class="field">
+              <label for="http_port">Porta HTTP / ONVIF</label>
+              <input id="http_port" type="number" min="1" max="65535" value="80" />
+            </div>
+            <div class="field">
+              <label for="rtsp_port">Porta RTSP</label>
+              <input id="rtsp_port" type="number" min="1" max="65535" value="554" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="onvif_endpoint">URL ONVIF <span class="opt">(opcional)</span></label>
+            <input id="onvif_endpoint" type="text" maxlength="512" placeholder="Preenche-se ao escolher da descoberta" autocomplete="off" />
+          </div>
+
+          <p class="sec-title">Stream RTSP · credenciais</p>
+          <div class="field">
+            <label for="usuario">Utilizador</label>
+            <input id="usuario" type="text" maxlength="128" autocomplete="username" placeholder="admin" />
+          </div>
+          <div class="field">
+            <label for="senha">Senha</label>
+            <input id="senha" type="password" maxlength="256" autocomplete="new-password" />
+          </div>
+          <div class="field">
+            <label for="rtsp_path">Caminho do stream</label>
+            <input id="rtsp_path" type="text" placeholder="/stream1" value="/stream1" />
+          </div>
+          <div class="field">
+            <label for="rtsp_manual">Ou RTSP completa</label>
+            <textarea id="rtsp_manual" rows="3" maxlength="512"></textarea>
+          </div>
+          <label class="field" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;max-width:32rem;margin-bottom:1rem;font-size:0.9rem;font-weight:500;">
+            <input type="checkbox" id="ativo" checked />
+            Registar como ativa
+          </label>
+
+          <button type="submit" class="btn-submit" id="btn-save">Guardar na base NeoVision</button>
+          <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+        </form>
+      </div>
+    </section>
+
+    <section class="card" id="sec-list">
+      <h3>Câmeras registadas · estado em tempo real</h3>
+      <p class="field-hint">Ordenação da API; primeiro IP e depois o que o teste RTSP devolveu há instantes.</p>
+      <div style="overflow-x: auto;">
+        <table class="camera-table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>IP</th>
+              <th>Estado</th>
+              <th>Situação do stream RTSP</th>
+            </tr>
+          </thead>
+          <tbody id="camera-tbody">
+            <tr>
+              <td colspan="4" class="field-hint">A carregar lista…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="field-hint" style="margin-top: 0.6rem">Um vídeo no browser não reproduz <code>rtsp://…</code> diretamente aqui sem transcodificar no servidor.</p>
+    </section>
+
+    <p class="foot" style="margin-top: 1rem">
+      Para <strong>grelha ao vivo</strong> (divisões 1–18) vai a <a href="/painel/tempo-real">Tempo real</a>.
+    </p>
+  </div>
+
+  <script src="/static/painel/cameras-live.js"></script>
+  <script>
+(function () {
+  var NV = window.NeoVisionCamerasLive;
+  if (!NV) return;
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+  function detailTxt(d) {
+    if (d == null) return "";
+    if (typeof d === "string") return d;
+    if (Array.isArray(d))
+      return d
+        .map(function (x) {
+          return (
+            (x.loc && x.loc.join ? x.loc.join(".") : "") +
+            ": " +
+            (x.msg || "")
+          );
+        })
+        .join("; ");
+    return "";
+  }
+
+  var toggle = document.getElementById("btn-toggle-camera");
+  var panel = document.getElementById("panel-camera-form");
+  if (toggle && panel) {
+    function setOpen(open) {
+      panel.classList.toggle("collapsed", !open);
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      toggle.textContent = open ? "Ocultar formulário" : "Adicionar câmera";
+    }
+    toggle.addEventListener("click", function () {
+      setOpen(panel.classList.contains("collapsed"));
+    });
+    if (window.location.hash === "#adicionar") setOpen(true);
+    window.addEventListener("hashchange", function () {
+      if (window.location.hash === "#adicionar") setOpen(true);
+    });
+  }
+
+  var tbody = document.getElementById("camera-tbody");
+
+  async function renderTableRows() {
+    if (!tbody) return;
+    var r = await NV.fetchListWithStatuses();
+    if (!r.ok) {
+      var err = (r.error || "").trim();
+      tbody.innerHTML =
+        '<tr><td colspan="4" class="field-hint">' +
+        (err ? escapeHtml(err.slice(0, 220)) : "—") +
+        "</td></tr>";
+      return;
+    }
+    if (!r.list.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="4" class="field-hint">Ainda não há câmeras na base — use o formulário acima.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = r.list
+      .map(function (cam) {
+        var st = r.byId[cam.id] || { ok: false, online: false, last_error: "—" };
+        var tagCls;
+        var lbl;
+        if (st.suppressed) {
+          tagCls = "status-tag-off";
+          lbl = "Offline";
+        } else if (!st.ok) {
+          tagCls = "status-tag-off";
+          lbl = "Indef.";
+        } else if (st.online) {
+          tagCls = "status-tag-on";
+          lbl = "Online";
+        } else {
+          tagCls = "status-tag-off";
+          lbl = "Offline";
+        }
+        var badge = '<span class="' + tagCls + '">' + lbl + "</span>";
+        var note;
+        if (st.suppressed) {
+          note = "";
+        } else if (!st.ok) {
+          note = escapeHtml(String(st.last_error || "Pedido falhou")).slice(0, 260);
+        } else if (st.online) {
+          note = st.last_error
+            ? escapeHtml(String(st.last_error)).slice(0, 260)
+            : "Stream RTSP respondeu (teste curto).";
+        } else {
+          note = escapeHtml(String(st.last_error || "Sem vídeo válido.")).slice(0, 260);
+        }
+        return (
+          "<tr>" +
+          "<td>" +
+          escapeHtml(cam.name || "—") +
+          "</td>" +
+          "<td><code style=\"font-size:0.82em\">" +
+          escapeHtml(cam.ip_address || "") +
+          "</code></td>" +
+          "<td><span class=\"mini-status\">" +
+          badge +
+          "</span></td>" +
+          "<td>" +
+          note +
+          "</td>" +
+          "</tr>"
+        );
+      })
+      .join("");
+  }
+
+  var pollMs = 12000;
+  var iv = setInterval(renderTableRows, pollMs);
+  renderTableRows();
+
+  var btnDisc = document.getElementById("btn-discover-net");
+  var discOut = document.getElementById("discover-out");
+  if (btnDisc && discOut) {
+    btnDisc.addEventListener("click", async function () {
+      discOut.style.display = "block";
+      discOut.className = "feedback ok";
+      discOut.innerHTML =
+        "<strong>A buscar…</strong> câmaras ONVIF na LAN (UDP, ~5&nbsp;s).";
+      btnDisc.disabled = true;
+      try {
+        var res = await fetch("/cameras/discover/network?listen_seconds=5", {
+          headers: { Accept: "application/json" },
+        });
+        var data = await res.json().catch(function () {
+          return null;
+        });
+        if (!res.ok) {
+          discOut.className = "feedback bad";
+          discOut.innerHTML = escapeHtml(
+            detailTxt(data && data.detail) || String(res.status),
+          ).slice(0, 380);
+          return;
+        }
+        if (!Array.isArray(data) || !data.length) {
+          discOut.className = "feedback";
+          discOut.innerHTML =
+            '<span class="field-hint">Nenhuma câmara ONVIF respondeu. Mesma VLAN? Firewall a bloquear UDP 3702?</span>';
+          return;
+        }
+        function portFromHttp(u) {
+          try {
+            var x = String(u || "").trim();
+            var url = new URL(x.indexOf("://") === -1 ? "http://" + x : x);
+            return url.port
+              ? parseInt(url.port, 10)
+              : url.protocol === "https:"
+                ? 443
+                : 80;
+          } catch (_e) {
+            return null;
+          }
+        }
+        function applyRow(row) {
+          var ipEl = document.getElementById("ip");
+          var oe = document.getElementById("onvif_endpoint");
+          var hp = document.getElementById("http_port");
+          if (ipEl)
+            ipEl.value = row.ip_hint || row.remote_ip || "";
+          if (oe) oe.value = row.onvif_endpoint || "";
+          var pn = portFromHttp(row.onvif_endpoint);
+          if (hp && pn) hp.value = String(pn);
+          var pane = document.getElementById("panel-camera-form");
+          var tg = document.getElementById("btn-toggle-camera");
+          if (pane && pane.classList.contains("collapsed") && tg) tg.click();
+          var addSec = document.getElementById("adicionar");
+          if (addSec) addSec.scrollIntoView({ behavior: "smooth" });
+        }
+        discOut.className = "feedback ok";
+        discOut.innerHTML =
+          "<strong>Resultados da busca na rede:</strong>" +
+          '<ul style="margin:0.5rem 0 0;padding-left:1.2rem;line-height:1.5">' +
+          data
+            .map(function (row, i) {
+              var ipTxt = escapeHtml(row.ip_hint || row.remote_ip || "?");
+              var urlTxt = escapeHtml(String(row.onvif_endpoint || ""));
+              return (
+                "<li>" +
+                "<code>" +
+                ipTxt +
+                "</code> " +
+                '<button type="button" class="btn-submit" style="margin-left:0.35rem;font-size:0.85rem;padding:0.25rem 0.6rem" data-didx="' +
+                i +
+                '">Usar este IP</button>' +
+                '<br/><span class="field-hint">' +
+                urlTxt +
+                "</span></li>"
+              );
+            })
+            .join("") +
+          "</ul>";
+        discOut.querySelectorAll("button[data-didx]").forEach(function (b) {
+          b.addEventListener("click", function () {
+            var ix = parseInt(b.getAttribute("data-didx"), 10);
+            applyRow(data[ix]);
+          });
+        });
+      } catch (e) {
+        discOut.className = "feedback bad";
+        discOut.innerHTML = escapeHtml(e.message || String(e));
+      } finally {
+        btnDisc.disabled = false;
+      }
+    });
+  }
+
+  var form = document.getElementById("camera-form");
+  var fb = document.getElementById("feedback");
+  var btn = document.getElementById("btn-save");
+  if (!form || !fb || !btn) return;
+
+  function hideFb() {
+    fb.className = "feedback";
+    fb.innerHTML = "";
+  }
+  function showBusy(txt) {
+    fb.className = "feedback ok";
+    fb.innerHTML =
+      escapeHtml(txt) +
+      '<p class="status-note">A verificar vídeo pode levar até ~15&nbsp;s por câmara ligada ao mesmo tempo.</p>';
+  }
+  function showOk(html) {
+    fb.className = "feedback ok";
+    fb.innerHTML = html;
+    fb.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  function showBad(t) {
+    fb.className = "feedback bad";
+    fb.textContent = t;
+  }
+
+  function rtspBuilt(ip, rtspPort, path, usuario, senha) {
+    var p = path.trim()
+      ? path.trim().charAt(0) === "/"
+        ? path.trim()
+        : "/" + path.trim()
+      : "/stream1";
+    var auth = "";
+    if ((usuario || senha).length) {
+      auth =
+        encodeURIComponent(usuario || "") +
+        ":" +
+        encodeURIComponent(senha || "") +
+        "@";
+    }
+    return "rtsp://" + auth + ip + ":" + String(rtspPort) + p;
+  }
+
+  function formatFirstSave(idStr, pr) {
+    var tag =
+      pr && pr.ok && pr.online ? "status-tag-on" : !pr.ok ? "status-tag-off" : "status-tag-off";
+    var label =
+      pr && !pr.ok
+        ? "Indef."
+        : pr && pr.online
+          ? "Online"
+          : "Offline";
+    return (
+      '<div class="status-line">' +
+      '<span class="' +
+      tag +
+      '">' +
+      escapeHtml(label) +
+      '</span>' +
+      '<span>— câmera registada neste servidor</span></div>' +
+      '<p class="status-note">UUID: <code style="background:#f1f5f9">' +
+      escapeHtml(idStr) +
+      "</code></p>" +
+      '<p class="status-note">' +
+      escapeHtml(
+        String(
+          (!pr.ok && pr.last_error) ||
+            (pr && !pr.online && pr.last_error) ||
+            (pr && pr.online && !pr.last_error ? "RTSP aceite." : pr.last_error || "")
+        ).slice(0, 380)
+      ) +
+      "</p>"
+    );
+  }
+
+  form.addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    hideFb();
+    var ip = document.getElementById("ip").value.trim();
+    if (!ip) {
+      showBad("IP obrigatório.");
+      return;
+    }
+    var httpPort = parseInt(document.getElementById("http_port").value, 10);
+    var rtspPort = parseInt(document.getElementById("rtsp_port").value, 10);
+    if (!Number.isFinite(httpPort) || httpPort < 1 || httpPort > 65535)
+      httpPort = 80;
+    if (!Number.isFinite(rtspPort) || rtspPort < 1 || rtspPort > 65535)
+      rtspPort = 554;
+    var nome = document.getElementById("nome").value.trim();
+    var manual = document.getElementById("rtsp_manual").value.trim();
+    var usuario = document.getElementById("usuario").value.trim();
+    var senha = document.getElementById("senha").value;
+    var rtsp_path = document.getElementById("rtsp_path").value.trim() || "/stream1";
+    var ativo = document.getElementById("ativo").checked;
+    var rtsp_url = manual || rtspBuilt(ip, rtspPort, rtsp_path, usuario, senha);
+    var oeEl = document.getElementById("onvif_endpoint");
+    var oeVal = oeEl && oeEl.value ? oeEl.value.trim() : "";
+    var payload = {
+      ip_address: ip,
+      http_port: httpPort,
+      is_enabled: ativo,
+      rtsp_url: rtsp_url,
+    };
+    if (nome) payload.name = nome;
+    if (oeVal) payload.onvif_endpoint = oeVal;
+    btn.disabled = true;
+    try {
+      var res = await fetch("/cameras", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      var data = await res.json().catch(function () {
+        return null;
+      });
+      if (!res.ok) throw new Error(detailTxt(data && data.detail) || res.status);
+      showBusy("Registada · a experimentar vídeo nesta nova câmara…");
+      var nid = String(data.id || "");
+      var pr = await NV.probeOne(nid);
+      showOk(
+        "<strong>Base NeoVision actualizada.</strong>" + formatFirstSave(nid, pr)
+      );
+      await renderTableRows();
+      document.getElementById("sec-list") &&
+        document.getElementById("sec-list").scrollIntoView({ behavior: "smooth" });
+    } catch (e) {
+      showBad(e.message || String(e));
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  window.addEventListener("beforeunload", function () {
+    clearInterval(iv);
+  });
+})();
+  </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+NEOVISION AI / empacote para TESTAR NOUTRO PC (Windows x64)
+============================================================
+
+No PC ONDE COMPILAS (desenvolvimento)
+-------------------------------------
+Requisitos:
+  - Git / pasta completa deste repositorio
+  - Python 3.10+ (na PATH), com rede para pip na 1ª vez
+  - .NET 8 SDK instalado ("dotnet --version" deve mostrar v8.x)
+  - (Opcional) Inno Setup 6 para gerar instalador grafico dos ficheiros WPF.
+
+Passos:
+  na raiz do repo, PowerShell:
+
+    powershell -ExecutionPolicy Bypass -File .\build\empacotar-tudo-para-teste.ps1
+
+  Ou em dois passos:
+    powershell -ExecutionPolicy Bypass -File .\build\publish-api-windows.ps1
+    powershell -ExecutionPolicy Bypass -File .\build\publish-windows.ps1
+
+Saida:
+  dist\NeoVision-API\
+      NeoVision-API.exe
+      INICIAR-API-DIST.cmd
+      pasta _internal (+ estaticos em static\ inclui painel gravacoes)
+
+  dist\NeoVision-Desktop-win-x64\
+      NeoVision.exe          (cliente mesa WPF; nao precisa .NET instalado no outro PC)
+
+Instalador WPF apenas (Opcional):
+  Instale Inno Setup 6 -> abra build\NeoVision-Setup.iss -> Compile (F9)
+  Saida em dist\installer\NeoVision-Setup-0.1.0.exe
+
+
+No PC de TESTES (usuario final)
+-------------------------------
+Copie a pasta inteira dist\NeoVision-API OU zipe-a.
+  - Duplo-clique NeoVision-API.exe OU INICIAR-API-DIST.cmd
+  - Abra no browser: http://127.0.0.1:8080/painel
+  - Pagina gravacoes: http://127.0.0.1:8080/static/painel/gravacoes.html
+
+Copie também dist\NeoVision-Desktop-win-x64 inteira para o programa de mesa NeoVision.exe.
+
+NOTAS
+  - MySQL: se usar camaras na base, o PC de teste deve ter MySQL configurado OU as rotas falham aos camaras;
+    o painel gravacoes (listagem de videos) pode usar sem MySQL desde que apenas leia disco.
+  - API e Desktop sao modulo a parte do Flutter/movel.
+  - Se 8080 estiver ocupada, o instalador/cmd pode usar 9080 (ver texto na consola ao arrancar).
+
+
+PASTA ÚNICA COM TUDO PARA UM PC (ZIP / pen-drive)
+-------------------------------------------------
+Depois de ter gravado dist\NeoVision-API e dist\NeoVision-Desktop-win-x64 (passos acima), na RAIZ DO REPO rode:
+
+    powershell -ExecutionPolicy Bypass -File .\build\pacote-para-outro-pc.ps1
+
+Ou tudo compilado + empacote num só comando:
+
+    powershell -ExecutionPolicy Bypass -File .\build\pacote-para-outro-pc.ps1 -Rebuild
+
+Saída (copie ou zipe ISTO para o outro PC):
+
+    dist\NeoVision-Pacote-PC\
+
+Dentro encontra:
+  - NeoVision-API\
+  - NeoVision-Desktop\
+  - db\schema.sql
+  - INSTALACAO-NO-PC.txt  (instruções claras para o utilizador que recebe o pen-drive)
+

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>NeoVision.Desktop</RootNamespace>
+    <AssemblyName>NeoVision</AssemblyName>
+    <Product>NeoVision AI</Product>
+    <Company>NeoVision</Company>
+    <AssemblyTitle>NeoVision AI</AssemblyTitle>
+    <Description>Monitoramento de câmeras e reconhecimento facial</Description>
+    <Version>0.1.0</Version>
+    <FileVersion>0.1.0.0</FileVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- publicação: não usar trimming com WPF -->
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" Link="appsettings.json" />
+    <None Update="Assets\painel-referencia.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Assets\dash-sistema.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
+    <PackageReference Include="MySqlConnector" Version="2.3.5" />
+  </ItemGroup>
+</Project>

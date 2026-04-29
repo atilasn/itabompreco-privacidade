@@ -1,0 +1,118 @@
+================================================================================
+  NeoVision IA — O que instalar para o projeto correr bem (Windows recomendado)
+================================================================================
+
+Repositório oficial (GitHub):
+
+  https://github.com/atilasn/NeoVision-IA.git
+
+Clonar para o seu PC:
+
+  git clone https://github.com/atilasn/NeoVision-IA.git
+  cd NeoVision-IA
+
+
+--------------------------------------------------------------------------------
+OBRIGATORIO OU FORTEMENTE RECOMENDADO PARA DESENVOLVIMENTO
+--------------------------------------------------------------------------------
+
+ [ ] Git para Windows — https://git-scm.com/download/win
+
+ [ ] Python 3.10 ou superior — https://www.python.org/downloads/
+       Na instalacao marque “Add Python to PATH”.
+       Confirmar num terminal:  python --version
+
+ [ ] MySQL Server 8 (mesmo pc ou outro servidor acessível na rede)
+       — https://dev.mysql.com/downloads/mysql/
+       Criar base e utilizador; importar modelo:
+         mysql -u root -p < db/schema.sql   (na raiz do repo; ajuste credenciais)
+       Configuracao da API / Desktop: variaveis NEOVISION_MYSQL_* ou appsettings.json
+
+ [ ] Drivers / firewall: permitir a porta da API e do MySQL na rede LOCAL se testar outros equipamentos.
+
+
+--------------------------------------------------------------------------------
+SERVICO PYTHON (FastAPI — src\NeoVision.AI)
+--------------------------------------------------------------------------------
+
+Abra uma consola NA PASTA:  NeoVision-IA\src\NeoVision.AI
+
+Opcional recomendado (ambiente virtual):
+
+  python -m venv .venv
+  .venv\Scripts\activate
+
+Instalar bibliotecas:
+
+  pip install -r requirements.txt
+
+Arrancar a API:
+
+  .\INICIAR-API.cmd
+  (ou manualmente:  python -m uvicorn app.main:app --host 127.0.0.1 --port 8080)
+
+Pacotes principais já listados em requirements.txt: FastAPI, Uvicorn, OpenCV headless,
+NumPy, PyMySQL, etc. Na primeira corrida pode ser preciso estar online para o pip resolver dependencias.
+
+
+--------------------------------------------------------------------------------
+PROGRAMA DE MESA (WPF — src\NeoVision.Desktop)
+--------------------------------------------------------------------------------
+
+ [.NET 8 SDK](https://dotnet.microsoft.com/download) — obrigatorio para compilar.
+
+Confirmar:
+
+  dotnet --version
+
+Compile / execute:
+
+  dotnet build NeoVision.sln
+  dotnet run --project src\NeoVision.Desktop\NeoVision.Desktop.csproj
+
+Ou use o gerador para pasta portavel (scripts em build\) — ver build\INSTALACAO-PC-TESTE.txt
+
+
+--------------------------------------------------------------------------------
+APLICACAO MOVEL Flutter (opcional)
+--------------------------------------------------------------------------------
+
+  Flutter SDK canal stable — https://docs.flutter.dev/get-started/install/windows
+  Pasta:  src\neo_vision_mobile
+  Comando:  flutter pub get  &&  flutter run
+
+
+--------------------------------------------------------------------------------
+O QUE NÃO E OBRIGATORIO SÓ PARA “VER” A API COM NAVEGADOR
+--------------------------------------------------------------------------------
+
+ Para abrir apenas o painel web /health em máquina local, MySQL pode ser adiado
+ se nao usar rotas que listam cameras na base.
+
+
+--------------------------------------------------------------------------------
+DOCUMENTACAO EXTRA NESTE REPOSITORIO
+--------------------------------------------------------------------------------
+
+ build\INSTALACAO-PC-TESTE.txt   — empacotar API + Desktop para pendrive outro PC
+ build\INSTALACAO-NO-PC.txt     — texto para utilizador que recebe o pacote
+ build\empacotar-tudo-para-teste.ps1  ;  pacote-para-outro-pc.ps1
+
+
+--------------------------------------------------------------------------------
+PUBLICAR CODIGO NO GITHUB (quem faz commit)
+--------------------------------------------------------------------------------
+
+Ja com remote configurado e branch main:
+
+  git add -A
+  git commit -m "Descrição das alterações"
+  git push -u origin main
+
+Se o primeiro push pedir login, GitHub já nao aceita só senha HTTPS: use PAT
+(Personal Access Token) ou configurar SSH (chave).
+
+
+================================================================================
+Fim da lista rapida NeoVision IA
+================================================================================

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="google" content="notranslate" />
+  <title>NeoVision · Sistema</title>
+  <link rel="stylesheet" href="/static/painel/dashboard.css" />
+</head>
+<body>
+  <div class="bg" aria-hidden="true"></div>
+  <div class="shell">
+    <header class="head">
+      <a class="brand" href="/painel">
+        <span class="logo" aria-hidden="true">◉</span>
+        <div>
+          <h1>Sistema</h1>
+          <p class="sub">Dashboard NeoVision</p>
+        </div>
+      </a>
+      <a class="back-painel" href="/painel">← Painel</a>
+    </header>
+    <h2 class="page-title" style="margin-top:1.25rem">Sistema e diagnóstico</h2>
+    <p class="lead">Aqui podes <strong>configurar como entras no NeoVision</strong> (rede / endereço) e confirmar que a API responde.</p>
+
+    <section class="card" id="card-clock">
+      <h3>Hora do servidor NeoVision</h3>
+      <p class="field-hint">
+        Mesma máquina onde corre a API (<code>uvicorn</code>). Também ves a hora do teu browser para comparar.
+      </p>
+      <p class="hw-clock-line">
+        <strong>UTC:</strong> <time id="sys-utc" datetime="">—</time>
+        · <strong>Fuso local (servidor):</strong>
+        <time id="sys-local" datetime="">—</time>
+        (<span id="sys-tz">—</span>)
+      </p>
+      <p class="hw-clock-line">
+        <strong>Neste explorador:</strong> <span id="sys-browser">—</span>
+      </p>
+      <div class="card-actions" style="margin-top: 0.9rem;">
+        <button type="button" class="btn-submit" style="margin-top:0" id="btn-refresh-clock">Actualizar hora</button>
+      </div>
+    </section>
+
+    <section class="card" id="card-disks">
+      <h3>Discos e saúde (HD · SSD · NVMe)</h3>
+      <div id="disk-mount" class="disk-shell" aria-live="polite">
+        <p id="disk-status" class="field-hint">A carregar discos…</p>
+      </div>
+      <div class="card-actions" style="margin-top: 0.85rem;">
+        <button type="button" class="btn-submit" style="margin-top:0" id="btn-refresh-disk">Actualizar lista de discos</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Rede para aceder ao NeoVision</h3>
+      <p>No <strong>mesmo PC</strong> onde corres o <code>INICIAR-API.cmd</code> ou o uvicorn: abre no browser <code>http://127.0.0.1:PORTA/</code>. A <strong>porta</strong> aparece na janela preta quando o servidor inicia (<strong>8080</strong> habitual; <strong>9080</strong> se 8080 estiver ocupada).</p>
+      <p><strong>Este separador já usa o anfitrião e porta corretos</strong>, desde que abras o link a partir dessa máquina. Para testar rápido: entra primeiro no painel e depois em Sistema.</p>
+      <p><strong>Outro equipamento na mesma LAN</strong> (telefone, segundo PC): o arranque padrão da API só escuta em <code>127.0.0.1</code>, pelo que esse outro não consegue ligar até passares o servidor para aceitar a rede interna:</p>
+      <ul class="links">
+        <li>Arranca o uvicorn com <code>--host 0.0.0.0</code> (e a mesma <code>--port</code>). No outro equipamento usa <code>http://IP-DESTE-PC:PORTA/painel</code> — descobre o IP em Definições de rede do Windows ou <code>ipconfig</code>.</li>
+        <li>No <strong>Firewall do Windows</strong>, permite entrada TCP para essa porta só na rede privada (ou apenas para IPs de confiança). Não expor a Internet diretamente sem VPN ou HTTPS reverso.</li>
+      </ul>
+      <p><strong>Base de dados (MySQL)</strong> quando não está neste mesmo PC — variáveis de ambiente antes de iniciar a API (<code>NEOVISION_MYSQL_HOST</code>, porta, utilizador): vê os comentários no <code>INICIAR-API.cmd</code> e no <strong>NeoVision Desktop</strong> (<code>appsettings.json</code>).</p>
+      <div class="card-actions two">
+        <a class="cta primary" href="/painel">
+          <strong>Entrar no painel NeoVision</strong>
+          <span>Usa este anfitrião e porta (mesmo servidor que este painel)</span>
+        </a>
+        <a class="cta" href="/painel/tempo-real">
+          <strong>WebSocket tempo real</strong>
+          <span>Cliente usa o mesmo IP e porta; caminho habitual <code>/ws/events</code></span>
+        </a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>IPs das câmeras — colocar no NeoVision</h3>
+      <p>As câmeras ficam na tabela <code>cameras</code> (MySQL), partilhada entre a <strong>API</strong> e o <strong>NeoVision Desktop</strong>. Para o sistema “ver” cada câmera, precisas do <strong>endereço IP</strong> (ou hostname) que o PC do NeoVision consegue alcançar — em geral a <strong>mesma rede local</strong> (Wi-Fi ou cabo) que o servidor.</p>
+      <ul class="links">
+        <li><strong>IP estável:</strong> no router, reserva DHCP para o MAC da câmera ou configura IP fixo no equipamento — senão o IP muda e o registo deixa de bater certo.</li>
+        <li><strong>Formulário no painel:</strong> <a href="/painel/cameras#adicionar">Adicionar câmera</a> — mesmo <code>POST /cameras</code> com IP, portas, URL RTSP gerada a partir de utilizador/senha.</li>
+        <li><strong>Ou pela API / Swagger:</strong> <code>POST /cameras</code> com JSON; <code>ip_address</code> <strong>obrigatório</strong>; <code>name</code>, <code>http_port</code>, <code>rtsp_url</code>, <code>onvif_endpoint</code> opcionais.</li>
+        <li><strong>Registo pelo Desktop:</strong> «Procurar câmeras» (ONVIF) e «Guardar na base MySQL» — preenche a mesma tabela sem escritos manuais de JSON.</li>
+        <li><strong>Depois:</strong> <code>GET /cameras</code> lista tudo com o <strong>id</strong> (UUID); <code>GET /cameras/{id}/status</code> testa RTSP/redes.</li>
+      </ul>
+      <p>Firewall: o PC servidor tem de conseguir <strong>sair até à câmera</strong> nos portos que ela usa (HTTP, RTSP habitualmente).</p>
+      <div class="card-actions two">
+        <a class="cta primary" href="/painel/cameras#adicionar">
+          <strong>Adicionar câmera (formulário)</strong>
+          <span>IP, rede máscara/GW/DNS de guia, RTSP utilizador/senha</span>
+        </a>
+        <a class="cta" href="/painel/cameras">
+          <strong>Página Câmeras do painel</strong>
+          <span>Atalhos lista JSON, Swagger e estado</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Estás longe · app Flutter e Firebase · PC onde corre o NeoVision</h3>
+      <p>Exemplo: vives noutro <strong>estado</strong> ou país; em casa há um computador sempre ligado com a API NeoVision (uvicorn); queres usar um <strong>aplicativo Flutter</strong> e <strong>Firebase</strong>.</p>
+      <p>A API só é alcançável na Internet se existir um caminho redesenhado até ela — o Flutter <strong>não</strong> vai “saltar até <code>127.0.0.1</code> dessa casa” sozinho. O papel mais comum do <strong>Firebase</strong> no teu lado mobile é:</p>
+      <ul class="links">
+        <li><strong>Firebase Authentication</strong> — quem pode abrir portão ou ver alertas (conta Google/email).</li>
+        <li><strong>Firebase Cloud Messaging (FCM)</strong> — empurrar alertas («portão», «alarme», «câmera offline») para o telemóvel mesmo com a app fechada.</li>
+        <li><strong>Firestore / Remote Config</strong> (opcional) — gravar comandos ou o URL da API atual (ex.: quando mudas de túnel), sem dar HTTP direto de telemóvel ao PC sem infraestrutura.</li>
+      </ul>
+      <p><strong>Com o NeoVision mesmo a correr apenas em LAN</strong>, habitualmente combinás um destes padrões:</p>
+      <ul class="links">
+        <li><strong>Túnel HTTPS</strong> (ex.: Cloudflare Tunnel, modelo semelhante a ngrok) no PC onde corre a API: obténs uma URL público <code>https://algo.example.com</code> que faz forward para <code>http://127.0.0.1:PORTA</code>. Na app Flutter (pacote <code>http</code> ou Dio) chamas esse URL — porta 443, encriptado. No servidor continua igual; na frente garantes firewall e autenticação forte.</li>
+        <li><strong>VPN tipo mesh</strong> (Tailscale, ZeroTier, WireGuard): o telemóvel parece estar na rede virtual e chamas por IP interno com regras de acesso estritas.</li>
+        <li><strong>Backend intermédio</strong>: um pequeno serviço no Firebase (Cloud Functions) ou VPS que valida JWT do utilizador e reencaminha para a casa apenas se autorizado — melhor quando queres limitar comandos antes de encostar ao PC.</li>
+      </ul>
+      <p>Para <strong>câmeras e RTSP pesado</strong>, muitos sistemas fazem ingest na nuvem ou relay dedicado — isso já é projeto à parte sobre o modelo de vídeo.</p>
+      <div class="card-actions two">
+        <a class="cta primary" href="https://firebase.google.com/docs/flutter/setup" target="_blank" rel="noopener">
+          <strong>Firebase + Flutter</strong>
+          <span>Documentação oficial (Auth, opcional Hosting / FCM)</span>
+        </a>
+        <a class="cta" href="/docs" target="_blank" rel="noopener">
+          <strong>Pontos de integração NeoVision</strong>
+          <span>OpenAPI — os mesmos <code>/health</code>, <code>/automation/…</code>, etc.</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Teste de vida (health check)</h3>
+      <p>Abre o endereço <code>GET /health</code> no browser — se aparecer <code>{"status":"ok"}</code> o processo Python está ativo.</p>
+      <div class="card-actions">
+        <a class="cta" href="/health" target="_blank" rel="noopener">
+          <strong>Abrir /health noutro separador</strong>
+          <span>Ver se a resposta contém «ok» quando a API está a correr</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Resumo e links (JSON na raiz)</h3>
+      <p>Para programas, scripts e integrações, o ponto de entrada JSON lista todos os caminhos (incluindo <code>painel</code>, <code>docs</code>).</p>
+      <div class="card-actions">
+        <a class="cta" href="/" target="_blank" rel="noopener">
+          <strong>Abrir JSON em /</strong>
+          <span>Use curl ou pedido Accept:application/json se o browser redirecionar</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Documentação completa (Swagger)</h3>
+      <p>Na tag <strong>sistema</strong> do Swagger encontrás <code>GET /health</code>, <code>GET /system/clock</code>, <code>GET /system/storage/disks</code> e detalhe por <code>GET /system/storage/disks/{device_id}</code> ou <code>GET /system/storage/disk?device_id=…</code>.</p>
+      <div class="card-actions">
+        <a class="cta" href="/docs" target="_blank" rel="noopener">
+          <strong>Abrir Swagger</strong>
+          <span>Procure a tag «sistema» na lista de operações</span>
+        </a>
+      </div>
+    </section>
+  </div>
+  <script>
+(function () {
+  function fmtBytes(bytes) {
+    var b = typeof bytes === "number" ? bytes : parseInt(bytes, 10);
+    if (!Number.isFinite(b) || b < 0) return "—";
+    var u = ["B", "KB", "MB", "GB", "TB"];
+    var i = 0;
+    var n = b;
+    while (n >= 1024 && i < u.length - 1) {
+      n /= 1024;
+      i++;
+    }
+    return (n < 10 ? n.toFixed(1) : Math.round(n)) + " " + u[i];
+  }
+
+  function healthPillClass(h) {
+    var s = String(h || "").toLowerCase();
+    if (s.indexOf("healthy") !== -1) return "health-pill hp-healthy";
+    if (s.indexOf("warning") !== -1 || s.indexOf("degraded") !== -1) return "health-pill hp-warning";
+    if (
+      s.indexOf("unhealthy") !== -1 ||
+      s.indexOf("fatal") !== -1 ||
+      s.indexOf("failed") !== -1
+    )
+      return "health-pill hp-bad";
+    return "health-pill hp-unknown";
+  }
+
+  async function refreshClock() {
+    var utcEl = document.getElementById("sys-utc");
+    var locEl = document.getElementById("sys-local");
+    var tzEl = document.getElementById("sys-tz");
+    var brEl = document.getElementById("sys-browser");
+    if (!utcEl || !locEl || !tzEl || !brEl) return;
+    try {
+      var res = await fetch("/system/clock", { headers: { Accept: "application/json" } });
+      var j = await res.json().catch(function () {
+        return null;
+      });
+      if (!res.ok || !j || !j.utc_iso) {
+        utcEl.textContent = "—";
+        locEl.textContent = "—";
+        tzEl.textContent = "?";
+      } else {
+        utcEl.textContent = String(j.utc_iso);
+        utcEl.setAttribute("datetime", j.utc_iso);
+        locEl.textContent = String(j.local_iso || j.utc_iso);
+        locEl.setAttribute("datetime", j.local_iso || j.utc_iso);
+        tzEl.textContent = String(j.timezone_name || "");
+      }
+    } catch (_e) {
+      utcEl.textContent = "—";
+      locEl.textContent = "—";
+      tzEl.textContent = "?";
+    }
+    try {
+      brEl.textContent = new Date().toString();
+    } catch (_) {
+      brEl.textContent = "—";
+    }
+  }
+
+  var diskCache = {};
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  /** Carrega ou reutiliza detalhe (JSON técnico) para um disco. */
+  async function loadDiskDetail(slot, serverDeviceId) {
+    var did = parseInt(String(serverDeviceId), 10);
+    if (!slot || !Number.isFinite(did)) return;
+    if (diskCache[did]) {
+      slot.innerHTML =
+        '<p class="field-hint" style="margin:0 0 0.35rem">' +
+        "<strong>Detalhes do disco</strong> (JSON)</p>" +
+        '<pre class="disk-json">' +
+        escapeHtml(diskCache[did]) +
+        "</pre>";
+      return;
+    }
+    slot.innerHTML = '<span class="field-hint">A carregar detalhes…</span>';
+    try {
+      var q = "/system/storage/disk?device_id=" + encodeURIComponent(String(did));
+      var res = await fetch(q, { headers: { Accept: "application/json" } });
+      var j = await res.json().catch(function () {
+        return null;
+      });
+      if (!res.ok) {
+        var msg =
+          j && j.detail
+            ? String(j.detail)
+            : res.status === 404
+              ? "Sem detalhe (404). Confirme que a API NeoVision está atualizada e tente de novo."
+              : String(res.status);
+        slot.innerHTML = '<span class="field-hint">' + escapeHtml(msg) + "</span>";
+        return;
+      }
+      var pretty = JSON.stringify(j, null, 2);
+      diskCache[did] = pretty;
+      slot.innerHTML =
+        '<p class="field-hint" style="margin:0 0 0.35rem">' +
+        "<strong>Detalhes do disco</strong> · #" +
+        escapeHtml(String(did)) +
+        '</p><pre class="disk-json">' +
+        escapeHtml(pretty) +
+        "</pre>";
+    } catch (e) {
+      slot.innerHTML =
+        '<span class="field-hint">' + escapeHtml(String(e.message || e)) + "</span>";
+    }
+  }
+
+  function renderDisksMount(mountEl, statusEl, data, errText) {
+    while (mountEl.firstChild) mountEl.removeChild(mountEl.firstChild);
+    diskCache = {};
+    if (!data.platform_supported) {
+      mountEl.innerHTML =
+        '<p class="field-hint">A listagem de discos físicos apenas está disponível no <strong>Windows</strong> (PowerShell).</p>';
+      statusEl.innerHTML =
+        '<span class="field-hint">Este servidor NeoVision parece estar noutra plataforma.</span>';
+      return;
+    }
+    if (errText) {
+      mountEl.innerHTML =
+        '<p class="field-hint">' + escapeHtml(errText.slice(0, 400)) + "</p>";
+      statusEl.textContent = "";
+      return;
+    }
+    var list = data.disks || [];
+    if (!list.length) {
+      mountEl.innerHTML =
+        '<p class="field-hint">O Windows não devolveu discos físicos neste servidor (permissions ou comando indisponível).</p>';
+      statusEl.textContent = "";
+      return;
+    }
+    mountEl.innerHTML =
+      '<div class="disk-table-wrap"><table class="disk-table" role="grid"><thead><tr><th>#</th><th>Nome · suporte</th><th>Capacidade</th><th>Saúde</th><th>Bus / estado</th></tr></thead></table></div>';
+    statusEl.innerHTML =
+      '<span class="field-hint">' +
+      escapeHtml(list.length === 1 ? "1 disco. " : String(list.length) + " discos. ") +
+      "Clique numa linha para ver o detalhe técnico quando o Windows o expuser.</span>";
+    var table = mountEl.querySelector("table");
+    var tbody = document.createElement("tbody");
+    list.forEach(function (d) {
+      var nm =
+        escapeHtml(String(d.friendly_name || "?")) +
+        '<br/><span class="field-hint">' +
+        escapeHtml(String(d.media_type || "")) +
+        "</span>";
+      var trHit = document.createElement("tr");
+      trHit.className = "disk-hit";
+      trHit.title = "Mostrar ou ocultar detalhes técnicos do disco.";
+      trHit.innerHTML =
+        '<td>' +
+        escapeHtml(String(d.device_id)) +
+        '</td><td>' +
+        nm +
+        '</td><td>' +
+        escapeHtml(fmtBytes(d.size_bytes)) +
+        '</td><td><span class="' +
+        healthPillClass(d.health_status) +
+        '">' +
+        escapeHtml(String(d.health_status || "?")) +
+        '</span></td><td>' +
+        escapeHtml(String(d.bus_type || "—")) +
+        '<br/><span class="field-hint">' +
+        escapeHtml(String(d.operational_status || "—")) +
+        "</span></td>";
+
+      var trExp = document.createElement("tr");
+      trExp.className = "disk-expand";
+      trExp.style.display = "none";
+      var dc = document.createElement("td");
+      dc.colSpan = 5;
+      dc.className = "disk-detail-cell";
+      var slot = document.createElement("div");
+      slot.className = "disk-detail-slot";
+      dc.appendChild(slot);
+      trExp.appendChild(dc);
+
+      trHit.addEventListener("click", function () {
+        var same = trHit.classList.contains("disk-row-open");
+        tbody.querySelectorAll("tr.disk-hit").forEach(function (hr) {
+          hr.classList.remove("disk-row-open");
+        });
+        tbody.querySelectorAll("tr.disk-expand").forEach(function (er) {
+          er.style.display = "none";
+          var sl = er.querySelector(".disk-detail-slot");
+          if (sl) sl.innerHTML = "";
+        });
+        if (same) return;
+        trHit.classList.add("disk-row-open");
+        trExp.style.display = "table-row";
+        loadDiskDetail(slot, d.device_id);
+      });
+
+      tbody.appendChild(trHit);
+      tbody.appendChild(trExp);
+    });
+    table.appendChild(tbody);
+  }
+
+  async function refreshDisks() {
+    var mount = document.getElementById("disk-mount");
+    var st = document.getElementById("disk-status");
+    if (!mount || !st) return;
+    st.innerHTML = '<span class="field-hint">A ler discos físicos via API…</span>';
+    mount.innerHTML = "";
+    try {
+      var res = await fetch("/system/storage/disks", {
+        headers: { Accept: "application/json" },
+      });
+      var j = await res.json().catch(function () {
+        return null;
+      });
+      if (!res.ok) {
+        mount.innerHTML =
+          '<p class="field-hint">' +
+          escapeHtml(String((j && j.detail) || res.status)) +
+          "</p>";
+        st.textContent = "";
+        return;
+      }
+      if (!j || typeof j.platform_supported !== "boolean") {
+        mount.innerHTML = '<p class="field-hint">Resposta inesperada da API.</p>';
+        st.textContent = "";
+        return;
+      }
+      var apiErr =
+        j.error && typeof j.error === "string" && j.error.trim().length ? j.error.trim() : "";
+      renderDisksMount(mount, st, j, apiErr || null);
+    } catch (e) {
+      mount.innerHTML =
+        '<p class="field-hint">' + escapeHtml(String(e.message || e)) + "</p>";
+      st.textContent = "";
+    }
+  }
+
+  var btnCk = document.getElementById("btn-refresh-clock");
+  var btnDk = document.getElementById("btn-refresh-disk");
+  if (btnCk) btnCk.addEventListener("click", refreshClock);
+  if (btnDk) btnDk.addEventListener("click", refreshDisks);
+  refreshClock();
+  refreshDisks();
+})();
+  </script>
+</body>
+</html>
