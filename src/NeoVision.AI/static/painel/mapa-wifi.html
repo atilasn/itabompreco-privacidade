@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="google" content="notranslate" />
+  <title>NeoVision · Rastreio Wi‑Fi</title>
+  <link rel="stylesheet" href="/static/painel/dashboard.css" />
+  <style>
+    html.nv-rede-only .nv-full-app-only { display: none !important; }
+    html.nv-rede-only header .brand { pointer-events: none; cursor: default; }
+    .wf-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 0.75rem;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0.75rem 0 0;
+    }
+    .wf-meta {
+      margin-top: 0.65rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: 10px;
+      background: rgba(13, 59, 102, 0.06);
+      border: 1px solid var(--line);
+      font-size: 0.88rem;
+    }
+    .wf-err {
+      margin-top: 0.65rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: 10px;
+      border: 1px solid #fecaca;
+      background: #fff1f2;
+      color: #991b1b;
+      font-size: 0.88rem;
+    }
+    .wf-table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      max-height: min(65vh, 560px);
+      overflow-y: auto;
+      margin-top: 0.85rem;
+    }
+    .wf-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+    .wf-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      text-align: left;
+      padding: 0.5rem 0.65rem;
+      background: var(--soft);
+      font-weight: 600;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--line);
+    }
+    .wf-table tbody td {
+      padding: 0.4rem 0.65rem;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+    .wf-sig {
+      min-width: 140px;
+    }
+    .wf-sig-bar {
+      height: 0.45rem;
+      border-radius: 6px;
+      background: #e2e8f0;
+      overflow: hidden;
+      margin-top: 0.2rem;
+    }
+    .wf-sig-fill {
+      height: 100%;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #f59e0b, #22c55e);
+      max-width: 100%;
+    }
+    .wf-sub { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
+    .wf-uni { font-size: 0.8rem; line-height: 1.35; }
+    .wf-uni strong { color: #047857; }
+    button.btn-soft {
+      cursor: pointer;
+      padding: 0.52rem 0.95rem;
+      font-size: 0.87rem;
+      font-weight: 600;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--nv);
+    }
+    button.btn-soft:hover {
+      border-color: var(--nv);
+      background: rgba(13,59,102,0.06);
+    }
+  </style>
+  <script>
+    (function () {
+      try {
+        var m = new URLSearchParams(location.search || "").get("modo");
+        if (m === "rede") document.documentElement.classList.add("nv-rede-only");
+      } catch (e) {}
+    })();
+    document.addEventListener("DOMContentLoaded", function () {
+      try {
+        if (!document.documentElement.classList.contains("nv-rede-only")) return;
+        var b = document.getElementById("wf-back-monitor");
+        if (b) b.setAttribute("href", "/painel/equipamentos-rede?modo=rede");
+      } catch (e) {}
+    });
+  </script>
+</head>
+<body>
+  <div class="bg" aria-hidden="true"></div>
+  <div class="shell" style="max-width:92rem">
+    <header class="head">
+      <a class="brand" href="/painel">
+        <span class="logo" aria-hidden="true">◉</span>
+        <div>
+          <h1>Rastreio Wi‑Fi</h1>
+        </div>
+      </a>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">
+        <a class="back-painel" id="wf-back-monitor" href="/painel/equipamentos-rede">← Monitorização de equipamentos</a>
+        <a class="back-painel nv-full-app-only" href="/painel">Painel</a>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="wf-toolbar">
+        <button type="button" class="btn-submit" id="btn-refresh">Atualizar leitura</button>
+        <button type="button" class="btn-soft" id="btn-csv" disabled>Exportar CSV</button>
+      </div>
+      <p id="wf-status" class="field-hint" style="margin-top:0.65rem" aria-live="polite">Carregue uma leitura.</p>
+      <div id="wf-meta" class="wf-meta" hidden></div>
+      <div id="wf-err" class="wf-err" hidden></div>
+
+      <div class="wf-table-wrap" id="wf-wrap" style="display:none">
+        <table class="wf-table">
+          <thead>
+            <tr>
+              <th>SSID</th>
+              <th>MAC (BSSID)</th>
+              <th>Fabricante / UniFi</th>
+              <th>Sinal</th>
+              <th>Canal</th>
+              <th>Banda</th>
+              <th>Rádio</th>
+              <th>Auth / Enc.</th>
+            </tr>
+          </thead>
+          <tbody id="wf-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      var last = null;
+      function $(id) { return document.getElementById(id); }
+      function escCell(s) {
+        if (s == null || s === "") return "";
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+      function sigHtml(pct) {
+        var n = pct == null ? null : Number(pct);
+        if (n == null || !isFinite(n)) {
+          return "<div class=\"wf-sub\">—</div>";
+        }
+        var w = Math.max(0, Math.min(100, Math.round(n)));
+        return (
+          "<div><strong>" + w + "%</strong></div>" +
+          "<div class=\"wf-sig-bar\" aria-hidden=\"true\"><div class=\"wf-sig-fill\" style=\"width:" + w + "%\"></div></div>"
+        );
+      }
+      function render(rows) {
+        var tb = $("wf-tbody");
+        tb.innerHTML = "";
+        var list = rows || [];
+        for (var i = 0; i < list.length; i++) {
+          var r = list[i];
+          var tr = document.createElement("tr");
+          var auth = [r.authentication, r.encryption].filter(Boolean).join(" · ") || "—";
+          var fab = r.vendor || "";
+          var hint = r.ap_hint || "";
+          var uniCell = fab || hint
+            ? "<div class=\"wf-uni\"><strong>" + escCell(fab || "—") + "</strong>" +
+              (hint ? "<div class=\"wf-sub\">" + escCell(hint) + "</div>" : "") +
+              "</div>"
+            : "<span class=\"wf-sub\">—</span>";
+          tr.innerHTML =
+            "<td><strong>" + escCell(r.ssid || "(oculta)") + "</strong></td>" +
+            "<td><code>" + escCell(r.bssid) + "</code></td>" +
+            "<td style=\"max-width:16rem\">" + uniCell + "</td>" +
+            "<td class=\"wf-sig\">" + sigHtml(r.signal_pct) + "</td>" +
+            "<td>" + escCell(r.channel != null ? String(r.channel) : "—") + "</td>" +
+            "<td>" + escCell(r.band || "—") + "</td>" +
+            "<td>" + escCell(r.radio_type || "—") + "</td>" +
+            "<td style=\"max-width:14rem\">" + escCell(auth) + "</td>";
+          tb.appendChild(tr);
+        }
+        $("wf-wrap").style.display = list.length ? "block" : "none";
+      }
+      function csvQuote(s) {
+        if (s == null) return "";
+        var t = String(s);
+        if (/[,"\n\r]/.test(t)) return '"' + t.replace(/"/g, '""') + '"';
+        return t;
+      }
+      $("btn-csv").addEventListener("click", function () {
+        if (!last || !last.networks) return;
+        var lines = ["ssid,bssid,vendor,ap_hint,signal_pct,channel,band,radio_type,authentication,encryption"];
+        for (var i = 0; i < last.networks.length; i++) {
+          var r = last.networks[i];
+          lines.push([
+            csvQuote(r.ssid),
+            csvQuote(r.bssid),
+            csvQuote(r.vendor),
+            csvQuote(r.ap_hint),
+            r.signal_pct == null ? "" : String(r.signal_pct),
+            r.channel == null ? "" : String(r.channel),
+            csvQuote(r.band),
+            csvQuote(r.radio_type),
+            csvQuote(r.authentication),
+            csvQuote(r.encryption)
+          ].join(","));
+        }
+        var blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "neovision-wifi-survey.csv";
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+      async function load() {
+        $("wf-err").hidden = true;
+        $("wf-meta").hidden = true;
+        $("btn-csv").disabled = true;
+        last = null;
+        $("btn-refresh").disabled = true;
+        $("wf-status").textContent = "A ler redes Wi‑Fi…";
+        $("wf-tbody").innerHTML = "";
+        $("wf-wrap").style.display = "none";
+        try {
+          var res = await fetch("/network/wifi/survey", { method: "GET" });
+          var data = await res.json().catch(function () { return {}; });
+          if (!res.ok) {
+            var det = typeof data.detail === "string"
+              ? data.detail
+              : (res.statusText || "Erro");
+            throw new Error(det);
+          }
+          last = data;
+          if (!data.platform_supported) {
+            $("wf-meta").textContent = data.note || "Esta função só está disponível no executável Windows.";
+            $("wf-meta").hidden = false;
+            $("wf-status").textContent = "Plataforma não suportada.";
+            return;
+          }
+          if (data.error) {
+            $("wf-err").textContent = data.error;
+            $("wf-err").hidden = false;
+            $("wf-status").textContent = "Leitura concluída com aviso.";
+          } else {
+            $("wf-status").textContent = "Leitura concluída.";
+          }
+          if (data.note && !data.error) {
+            $("wf-meta").textContent = data.note;
+            $("wf-meta").hidden = false;
+          }
+          render(data.networks || []);
+          $("btn-csv").disabled = !(data.networks && data.networks.length);
+        } catch (e) {
+          $("wf-err").textContent = e && e.message ? e.message : String(e);
+          $("wf-err").hidden = false;
+          $("wf-status").textContent = "Falhou.";
+        } finally {
+          $("btn-refresh").disabled = false;
+        }
+      }
+      $("btn-refresh").addEventListener("click", load);
+      load();
+    })();
+  </script>
+</body>
+</html>

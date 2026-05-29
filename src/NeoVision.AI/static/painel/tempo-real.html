@@ -1,16 +1,142 @@
-<!DOCTYPE html>
-<html lang="pt">
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="google" content="notranslate" />
   <title>NeoVision · Tempo real</title>
   <link rel="stylesheet" href="/static/painel/dashboard.css" />
+  <style>
+    .tempo-real-floating-bar {
+      position: fixed;
+      top: 0.65rem;
+      right: 0.65rem;
+      z-index: 50;
+      display: none;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
+      padding: 0.45rem 0.65rem;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.88);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(226, 232, 240, 0.2);
+      max-width: min(420px, 96vw);
+    }
+    body.tr-cameras-only .tempo-real-floating-bar { display: flex; }
+    body.tr-cameras-only .tr-hide-when-grid {
+      display: none !important;
+    }
+    body.tr-cameras-only .shell {
+      padding-top: 0.35rem;
+    }
+    /* Modo só grelha: quase todo o ecrã para os quadros */
+    body.tr-cameras-only #mosaic-board.mosaic-board {
+      height: calc(100vh - 3.25rem);
+      max-height: none;
+    }
+    .mosaic-cell:not(.is-empty) {
+      cursor: pointer;
+      outline: none;
+      transition: box-shadow 0.15s, transform 0.12s;
+    }
+    .mosaic-cell:not(.is-empty):hover {
+      box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.5);
+    }
+    .mosaic-cell:fullscreen {
+      padding: 0.75rem 1rem;
+      border-radius: 0;
+      justify-content: space-between;
+    }
+    .mosaic-cell:fullscreen .mosaic-ph {
+      flex: 1;
+      min-height: 65vh;
+      font-size: clamp(3rem, 12vw, 6rem);
+    }
+    .mosaic-cell:fullscreen .mosaic-video-wrap {
+      flex: 1;
+      min-height: 65vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mosaic-cell:fullscreen .mosaic-live {
+      width: 100% !important;
+      height: 100% !important;
+      max-height: 85vh;
+      object-fit: contain;
+    }
+    #tr-modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(15, 23, 42, 0.45);
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    #tr-modal-backdrop.is-open {
+      display: flex;
+    }
+    .tr-modal {
+      background: var(--surface, #fff);
+      border-radius: 12px;
+      border: 1px solid var(--line, #e2e8f0);
+      padding: 1rem 1.15rem;
+      max-width: 28rem;
+      width: 100%;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.14);
+      max-height: min(86vh, 520px);
+      overflow-y: auto;
+    }
+    .tr-slot-row {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 0.4rem;
+      align-items: center;
+      margin-bottom: 0.35rem;
+    }
+    .tr-slot-row select {
+      width: 100%;
+      padding: 0.35rem 0.45rem;
+      border-radius: 8px;
+      border: 1px solid var(--line, #e2e8f0);
+      font-size: 0.86rem;
+    }
+    .tr-profile-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    .tr-profile-row select {
+      min-width: 10rem;
+      padding: 0.35rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+    }
+  </style>
 </head>
-<body>
+<body class="">
+  <!-- Barra quando só se vê a grelha (voltar ao painel completo) -->
+  <div class="tempo-real-floating-bar" aria-label="Acções rápidas (modo só grelha)">
+    <button type="button" class="btn-submit" style="margin:0;padding:0.4rem 0.75rem;font-size:0.85rem;background:#334155;border-color:#334155;color:#fff" id="btn-tr-show-ui">
+      Mostrar painel completo
+    </button>
+    <label style="margin:0;color:#f1f5f9;font-size:0.8rem;display:flex;align-items:center;gap:0.35rem;">
+      Perfil
+      <select id="tr-profile-picker-float" style="padding:0.3rem;border-radius:6px;font-size:0.82rem;border:1px solid #64748b;background:#fff;min-width:10rem;"></select>
+    </label>
+    <button type="button" id="btn-tr-profile-create-float" class="btn-submit" style="margin:0;padding:0.4rem 0.72rem;font-size:0.83rem;background:#0369a1;border-color:#0369a1;color:#fff">
+      Criar perfil
+    </button>
+  </div>
+
   <div class="bg" aria-hidden="true"></div>
   <div class="shell">
-    <header class="head">
+    <header class="head tr-hide-when-grid">
       <a class="brand" href="/painel">
         <span class="logo" aria-hidden="true">◉</span>
         <div>
@@ -21,15 +147,32 @@
       <a class="back-painel" href="/painel">← Painel</a>
     </header>
 
-    <h2 class="page-title" style="margin-top:1.25rem">Vista ao vivo das câmeras</h2>
-    <p class="lead">
-      Escolhe quantos quadros queres visualizar ao mesmo tempo (sem vídeo dentro do navegador: RTSP será possível quando houver transcoding ligado ao NeoVision — por agora vês só nome do canal e estado <strong>Online / Offline</strong> através do servidor).
-      A lista volta a actualizar‑se cada ~12&nbsp;s.
+    <h2 class="page-title tr-hide-when-grid" style="margin-top:1.25rem">Vista ao vivo das câmeras</h2>
+    <p class="lead tr-hide-when-grid">
+      O vídeo ao vivo vem do servidor como <strong>MJPEG</strong> (proxy RTSP com OpenCV): cada quadro abre um fluxo para a respectiva câmara.
+      Com muitas câmaras ao mesmo tempo o CPU e a rede sobem — use divisões menores ou feche separadores.
+      O estado <strong>Online / Offline</strong> continua a actualizar‑se a cada ~12&nbsp;s sem cortar o fluxo do vídeo.
     </p>
 
-    <section class="card">
-      <h3>Grelha de monitorização</h3>
-      <div class="mosaic-toolbar" role="group" aria-label="Divisões da grelha">
+    <section class="card" id="mosaic-section">
+      <h3 class="tr-hide-when-grid">Grelha de monitorização</h3>
+
+      <div class="tr-hide-when-grid tr-profile-row" style="justify-content:flex-start">
+        <button type="button" class="btn-submit" style="margin:0;padding:0.45rem 0.85rem;font-size:0.88rem;background:#0369a1;border-color:#0369a1" id="btn-tr-cameras-only">
+          Só grelha (câmeras)
+        </button>
+        <button type="button" class="btn-submit" style="margin:0;padding:0.45rem 0.85rem;font-size:0.88rem" id="btn-tr-profile-create">
+          Criar perfil…
+        </button>
+        <label style="margin:0;font-size:0.88rem;display:flex;align-items:center;gap:0.4rem;color:var(--ink)">
+          <span>Perfis gravados:</span>
+          <select id="tr-profile-picker" aria-label="Aplicar perfil guardado">
+            <option value="">— Livre (lista API) —</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="mosaic-toolbar tr-hide-when-grid" role="group" aria-label="Divisões da grelha">
         <span class="mosaic-toolbar-label">Divisões</span>
         <button type="button" data-layout="1">1</button>
         <button type="button" data-layout="3">3</button>
@@ -38,12 +181,34 @@
         <button type="button" data-layout="18">18</button>
       </div>
       <div id="mosaic-board" class="mosaic-board mosaic-layout-9" aria-live="polite"></div>
-      <p class="field-hint" style="margin-top: 0.75rem">
-        Em <strong>1×3×9×12×18</strong> ocupas respectivamente esse número de células pela ordem das câmeras devolvidas pela API.<br/>
-        Para acrescentar linhas volta a <a href="/painel/cameras">Câmeras</a> e regista lá.
+      <p class="field-hint tr-hide-when-grid" style="margin-top: 0.75rem;font-size:0.82rem">
+        <strong>Duplo clique</strong> num quadro com câmera para <strong>ecrã inteiro</strong>; volte ao tamanho com <strong>outro duplo clique</strong>.
+      </p>
+      <p class="field-hint tr-hide-when-grid" style="margin-top: 0.5rem;">
+        Em <strong>1×3×9×12×18</strong> ocupas respectivamente esse número de células pela ordem das câmaras escolhidas pelo perfil (ou pela API).<br/>
+        Para registar equipamentos volta a <a href="/painel/cameras">Câmeras</a>.
       </p>
     </section>
-    <p class="foot"><a href="/painel">Painel</a></p>
+    <p class="foot tr-hide-when-grid"><a href="/painel">Painel</a></p>
+  </div>
+
+  <!-- Modal criar/editar perfil -->
+  <div id="tr-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="tr-modal-title">
+    <div class="tr-modal">
+      <h3 id="tr-modal-title" style="margin:0 0 0.65rem;font-size:1rem;color:var(--nv)">Perfil da grelha</h3>
+      <label class="field" style="margin-bottom:0.65rem">
+        <span style="display:block;font-size:0.86rem;margin-bottom:0.25rem">Nome do perfil</span>
+        <input id="tr-modal-name" type="text" maxlength="64" placeholder="Ex.: Escritório 9 quadros" style="width:100%;padding:0.45rem;border-radius:8px;border:1px solid var(--line)" />
+      </label>
+      <p class="field-hint" style="margin-bottom:0.65rem;line-height:1.45">
+        Defina primeiro as <strong>divisões</strong> na barra (1×3×9…); em cada posição pode escolher uma câmera ou «vazio». O perfil fica apenas neste browser.
+      </p>
+      <div id="tr-modal-slots"></div>
+      <div style="margin-top:0.85rem;display:flex;flex-wrap:wrap;gap:0.45rem;">
+        <button type="button" class="btn-submit" style="margin:0" id="tr-modal-save">Guardar perfil</button>
+        <button type="button" class="btn-submit" style="margin:0;background:#64748b;border-color:#64748b" id="tr-modal-cancel">Cancelar</button>
+      </div>
+    </div>
   </div>
 
   <script src="/static/painel/cameras-live.js"></script>
@@ -52,9 +217,19 @@
   var NV = window.NeoVisionCamerasLive;
   if (!NV) return;
 
+  var LS_PROFILES = "neovision_tr_profiles_v1";
+  var LS_LAST_PROFILE = "neovision_tr_last_profile_id";
+
   var board = document.getElementById("mosaic-board");
   var layoutBtns = document.querySelectorAll(".mosaic-toolbar [data-layout]");
   var slots = 9;
+  var lastListResp = null;
+  /** @type {{ id: string, name: string, layout: number, cameraIds: string[] } | null} */
+  var activeProfileData = null;
+
+  var pickerMain = document.getElementById("tr-profile-picker");
+  var pickerFloat = document.getElementById("tr-profile-picker-float");
+  var syncingPickers = false;
 
   function layoutClass(n) {
     switch (parseInt(String(n), 10)) {
@@ -80,9 +255,299 @@
       .replace(/"/g, "&quot;");
   }
 
+  function loadProfiles() {
+    try {
+      var raw = localStorage.getItem(LS_PROFILES);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (_e) {
+      return [];
+    }
+  }
+
+  function saveProfiles(arr) {
+    try {
+      localStorage.setItem(LS_PROFILES, JSON.stringify(arr));
+    } catch (_e) {}
+  }
+
+  function randomProfileId() {
+    return "p-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+  }
+
+  function syncLayoutButtonsActive() {
+    layoutBtns.forEach(function (b) {
+      var n = parseInt(b.getAttribute("data-layout"), 10);
+      b.classList.toggle("is-active", n === slots);
+    });
+  }
+
+  function setPickerValues(val) {
+    syncingPickers = true;
+    if (pickerMain) pickerMain.value = val || "";
+    if (pickerFloat) pickerFloat.value = val || "";
+    syncingPickers = false;
+  }
+
+  function saveLastProfileId(id) {
+    try {
+      if (id) localStorage.setItem(LS_LAST_PROFILE, id);
+      else localStorage.removeItem(LS_LAST_PROFILE);
+    } catch (_e) {}
+  }
+
+  function refreshProfilePicker() {
+    var ps = loadProfiles();
+    var html =
+      '<option value="">— Livre (lista API) —</option>' +
+      ps
+        .map(function (p) {
+          return (
+            '<option value="' +
+            escapeHtml(p.id) +
+            '">' +
+            escapeHtml(p.name || p.id) +
+            " (" +
+            (p.layout || 0) +
+            " quadros)</option>"
+          );
+        })
+        .join("");
+    if (pickerMain) pickerMain.innerHTML = html;
+    if (pickerFloat) pickerFloat.innerHTML = html;
+    var cur = localStorage.getItem(LS_LAST_PROFILE);
+    if (cur && ps.some(function (p) { return p.id === cur; })) {
+      setPickerValues(cur);
+    } else {
+      setPickerValues("");
+    }
+  }
+
+  function profileFromStorage(id) {
+    return loadProfiles().find(function (p) {
+      return p.id === id;
+    });
+  }
+
+  function applyProfileById(id) {
+    if (!id) {
+      activeProfileData = null;
+      saveLastProfileId("");
+      redraw();
+      return;
+    }
+    var p = profileFromStorage(id);
+    if (!p) return;
+    slots = parseInt(String(p.layout), 10) || 9;
+    syncLayoutButtonsActive();
+    var ids = Array.isArray(p.cameraIds) ? p.cameraIds.slice() : [];
+    while (ids.length < slots) ids.push("");
+    ids = ids.slice(0, slots);
+    activeProfileData = {
+      id: p.id,
+      name: p.name || "",
+      layout: slots,
+      cameraIds: ids,
+    };
+    saveLastProfileId(id);
+    redraw();
+  }
+
+  function clearProfileFreeMode() {
+    activeProfileData = null;
+    setPickerValues("");
+    saveLastProfileId("");
+  }
+
+  function buildCameraOptionsHtml(selectedId) {
+    var list = lastListResp && lastListResp.ok && lastListResp.list ? lastListResp.list : [];
+    var parts = [
+      '<option value="">' + escapeHtml("— vazio —") + "</option>",
+    ];
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i];
+      var cid = String(c.id);
+      var lab = (c.name || c.ip_address || cid).slice(0, 80);
+      parts.push(
+        '<option value="' +
+          escapeHtml(cid) +
+          '"' +
+          (selectedId === cid ? " selected" : "") +
+          ">" +
+          escapeHtml(lab) +
+          "</option>"
+      );
+    }
+    return parts.join("");
+  }
+
+  function fillModalSlots() {
+    var container = document.getElementById("tr-modal-slots");
+    if (!container) return;
+    var html = "";
+    for (var i = 0; i < slots; i++) {
+      var pre = "";
+      if (activeProfileData && activeProfileData.cameraIds[i]) {
+        pre = activeProfileData.cameraIds[i];
+      }
+      html +=
+        '<div class="tr-slot-row">' +
+        '<span style="font-size:0.82rem;color:var(--muted,#64748b)">#' +
+        (i + 1) +
+        "</span>" +
+        '<select class="tr-modal-slot" data-index="' +
+        i +
+        '">' +
+        buildCameraOptionsHtml(pre) +
+        "</select>" +
+        "</div>";
+    }
+    container.innerHTML = html;
+  }
+
+  function openProfileModal() {
+    var nameEl = document.getElementById("tr-modal-name");
+    if (nameEl) nameEl.value = "";
+    fillModalSlots();
+    var bd = document.getElementById("tr-modal-backdrop");
+    if (bd) bd.classList.add("is-open");
+  }
+
+  function closeProfileModal() {
+    var bd = document.getElementById("tr-modal-backdrop");
+    if (bd) bd.classList.remove("is-open");
+  }
+
+  function saveProfileFromModal() {
+    var nameEl = document.getElementById("tr-modal-name");
+    var name = nameEl ? String(nameEl.value || "").trim() : "";
+    if (!name) {
+      alert("Indique um nome para o perfil.");
+      return;
+    }
+    var selects = document.querySelectorAll("#tr-modal-slots select.tr-modal-slot");
+    var cameraIds = [];
+    selects.forEach(function (sel) {
+      cameraIds.push(String(sel.value || ""));
+    });
+    while (cameraIds.length < slots) cameraIds.push("");
+    cameraIds = cameraIds.slice(0, slots);
+    var id = randomProfileId();
+    var prof = {
+      id: id,
+      name: name,
+      layout: slots,
+      cameraIds: cameraIds,
+    };
+    var all = loadProfiles();
+    all.push(prof);
+    saveProfiles(all);
+    refreshProfilePicker();
+    setPickerValues(id);
+    activeProfileData = {
+      id: prof.id,
+      name: prof.name,
+      layout: prof.layout,
+      cameraIds: prof.cameraIds.slice(),
+    };
+    saveLastProfileId(id);
+    closeProfileModal();
+    redraw();
+  }
+
+  function streamUrl(camId) {
+    return (
+      "/cameras/" +
+      encodeURIComponent(camId) +
+      "/stream.mjpeg?fps=10&quality=72&width=1024"
+    );
+  }
+
+  function buildVideoBlock(cam, on) {
+    var hasRtsp = (cam.rtsp_url || "").trim().length > 0;
+    var wantLive = on && hasRtsp;
+    if (wantLive) {
+      return (
+        '<div class="mosaic-video-wrap">' +
+        '<img class="mosaic-live" src="' +
+        streamUrl(cam.id) +
+        '" alt="" decoding="async" />' +
+        "</div>"
+      );
+    }
+    return (
+      '<div class="mosaic-video-wrap"><div class="mosaic-ph">◉</div></div>'
+    );
+  }
+
+  function mosaicSignature(cells, cams) {
+    return (
+      String(cells) +
+      ":" +
+      cams
+        .map(function (c) {
+          return c ? String(c.id) : "-";
+        })
+        .join(",")
+    );
+  }
+
+  function patchCells(board, cams, r, cells) {
+    for (var k = 0; k < cells; k++) {
+      var cell = board.children[k];
+      if (!cell || cell.classList.contains("is-empty")) continue;
+      var cam = cams[k];
+      if (!cam) continue;
+      var st = r.byId[cam.id] || { ok: false, online: false };
+      var on = !!(st.ok && st.online && !st.suppressed);
+      var tag = on ? "status-tag-on" : "status-tag-off";
+      var label =
+        st.suppressed ? "Offline" : !st.ok ? "?" : on ? "Online" : "Offline";
+      var wrap = cell.querySelector(".mosaic-video-wrap");
+      var hasRtsp = (cam.rtsp_url || "").trim().length > 0;
+      var wantLive = on && hasRtsp;
+      var img = wrap ? wrap.querySelector("img.mosaic-live") : null;
+      if (wantLive && !img && wrap) {
+        wrap.innerHTML =
+          '<img class="mosaic-live" src="' +
+          streamUrl(cam.id) +
+          '" alt="" decoding="async" />';
+      } else if (!wantLive && img && wrap) {
+        wrap.innerHTML = '<div class="mosaic-ph">◉</div>';
+      }
+      var badge = cell.querySelector(".tr-status-badge");
+      if (badge) {
+        badge.className = "tr-status-badge " + tag;
+        badge.textContent = label;
+      }
+      var errNeed =
+        !st.suppressed && !on && st.ok && st.last_error
+          ? String(st.last_error).slice(0, 220)
+          : "";
+      var hint = cell.querySelector(".tr-err-hint");
+      if (errNeed) {
+        if (!hint) {
+          var meta = cell.querySelector(".mosaic-meta");
+          if (meta) {
+            var p = document.createElement("p");
+            p.className = "field-hint tr-err-hint";
+            p.style.margin = "0.35rem 0 0";
+            p.style.lineHeight = "1.35";
+            meta.appendChild(p);
+            hint = p;
+          }
+        }
+        if (hint) hint.textContent = errNeed;
+      } else if (hint) {
+        hint.remove();
+      }
+    }
+  }
+
   async function redraw() {
     if (!board) return;
     var r = await NV.fetchListWithStatuses();
+    lastListResp = r;
     if (!r.ok) {
       var estr = ((r.error || "") + "").trim();
       board.innerHTML =
@@ -90,19 +555,44 @@
         (estr ? '<span>' + escapeHtml(estr.slice(0, 160)) + "</span>" : "") +
         "</div>";
       board.className = "mosaic-board " + layoutClass(slots);
+      board.removeAttribute("data-mosaic-sig");
       return;
     }
     var cells = slots;
-    var list = r.list.slice(0);
+    var byId = {};
+    r.list.forEach(function (c) {
+      byId[String(c.id)] = c;
+    });
+
+    var cams = [];
+    if (activeProfileData) {
+      for (var i = 0; i < cells; i++) {
+        var cid = activeProfileData.cameraIds[i];
+        cams.push(cid && byId[cid] ? byId[cid] : null);
+      }
+    } else {
+      for (var j = 0; j < cells; j++) {
+        cams.push(r.list[j] || null);
+      }
+    }
+
     board.className = "mosaic-board " + layoutClass(slots);
 
+    var sig = mosaicSignature(cells, cams);
+    var prevSig = board.getAttribute("data-mosaic-sig") || "";
+    var nKids = board.children ? board.children.length : 0;
+    if (sig === prevSig && nKids === cells) {
+      patchCells(board, cams, r, cells);
+      return;
+    }
+
     var parts = [];
-    for (var i = 0; i < cells; i++) {
-      var cam = list[i];
+    for (var k = 0; k < cells; k++) {
+      var cam = cams[k];
       if (!cam) {
         parts.push(
           '<div class="mosaic-cell is-empty"><span>Sem câmara neste espaço (' +
-            (i + 1) +
+            (k + 1) +
             "/" +
             cells +
             ")</span></div>"
@@ -114,16 +604,25 @@
       var tag = on ? "status-tag-on" : "status-tag-off";
       var label =
         st.suppressed ? "Offline" : !st.ok ? "?" : on ? "Online" : "Offline";
+      var errBlock = "";
+      if (!st.suppressed && !on && st.ok && st.last_error) {
+        errBlock =
+          '<p class="field-hint tr-err-hint" style="margin:0.35rem 0 0;line-height:1.35">' +
+          escapeHtml(String(st.last_error).slice(0, 220)) +
+          "</p>";
+      }
       parts.push(
-        '<div class="mosaic-cell">' +
+        '<div class="mosaic-cell" title="Duplo clique para ecrã inteiro" data-cam-id="' +
+        escapeHtml(cam.id) +
+        '">' +
         '<div class="mosaic-caption" title="' +
         escapeHtml(cam.name || cam.ip_address) +
         '">' +
         escapeHtml(cam.name || "—") +
-        '</div>' +
-        '<div class="mosaic-ph">◉</div>' +
-        '<div>' +
-        '<span class="' +
+        "</div>" +
+        buildVideoBlock(cam, on) +
+        '<div class="mosaic-meta">' +
+        '<span class="tr-status-badge ' +
         tag +
         '">' +
         escapeHtml(label) +
@@ -131,16 +630,13 @@
         " &nbsp;<code>" +
         escapeHtml(cam.ip_address || "") +
         "</code>" +
-        (!st.suppressed && !on && st.ok && st.last_error
-          ? '<p class="field-hint" style="margin:0.35rem 0 0;line-height:1.35">' +
-            escapeHtml(String(st.last_error).slice(0, 220)) +
-            "</p>"
-          : "") +
+        errBlock +
         "</div>" +
         "</div>"
       );
     }
     board.innerHTML = parts.join("");
+    board.setAttribute("data-mosaic-sig", sig);
   }
 
   layoutBtns.forEach(function (btn) {
@@ -149,12 +645,78 @@
       layoutBtns.forEach(function (b) {
         b.classList.toggle("is-active", b === btn);
       });
+      clearProfileFreeMode();
       redraw();
     });
   });
 
+  var btnCamerasOnly = document.getElementById("btn-tr-cameras-only");
+  if (btnCamerasOnly) {
+    btnCamerasOnly.addEventListener("click", function () {
+      document.body.classList.add("tr-cameras-only");
+    });
+  }
+  var btnShowUi = document.getElementById("btn-tr-show-ui");
+  if (btnShowUi) {
+    btnShowUi.addEventListener("click", function () {
+      document.body.classList.remove("tr-cameras-only");
+    });
+  }
+
+  function wirePicker(el) {
+    if (!el) return;
+    el.addEventListener("change", function () {
+      if (syncingPickers) return;
+      var v = el.value || "";
+      setPickerValues(v);
+      saveLastProfileId(v);
+      applyProfileById(v);
+    });
+  }
+  wirePicker(pickerMain);
+  wirePicker(pickerFloat);
+
+  var btnCreate = document.getElementById("btn-tr-profile-create");
+  var btnCreateFloat = document.getElementById("btn-tr-profile-create-float");
+  if (btnCreate) btnCreate.addEventListener("click", openProfileModal);
+  if (btnCreateFloat) btnCreateFloat.addEventListener("click", openProfileModal);
+
+  var btnSave = document.getElementById("tr-modal-save");
+  var btnCancel = document.getElementById("tr-modal-cancel");
+  if (btnSave) btnSave.addEventListener("click", saveProfileFromModal);
+  if (btnCancel) btnCancel.addEventListener("click", closeProfileModal);
+
+  var backdrop = document.getElementById("tr-modal-backdrop");
+  if (backdrop) {
+    backdrop.addEventListener("click", function (ev) {
+      if (ev.target === backdrop) closeProfileModal();
+    });
+  }
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") closeProfileModal();
+  });
+
+  if (board) {
+    board.addEventListener("dblclick", function (ev) {
+      var cell = ev.target.closest(".mosaic-cell");
+      if (!cell || cell.classList.contains("is-empty")) return;
+      ev.preventDefault();
+      if (document.fullscreenElement === cell) {
+        document.exitFullscreen().catch(function () {});
+      } else {
+        cell.requestFullscreen().catch(function () {});
+      }
+    });
+  }
+
+  refreshProfilePicker();
+  var lastSaved = localStorage.getItem(LS_LAST_PROFILE);
+  if (lastSaved && profileFromStorage(lastSaved)) {
+    applyProfileById(lastSaved);
+  } else {
+    redraw();
+  }
   var iv = setInterval(redraw, 12000);
-  redraw();
 
   window.addEventListener("beforeunload", function () {
     clearInterval(iv);

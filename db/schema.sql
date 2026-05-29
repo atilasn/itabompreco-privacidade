@@ -1,4 +1,4 @@
--- NeoVision AI — MySQL 8.x
+-- NeoVision AI — MySQL 8.x (opcional quando NEOVISION_DB=mysql; por defeito a API usa SQLite local)
 -- Charset: utf8mb4
 
 CREATE DATABASE IF NOT EXISTS neovision
@@ -29,13 +29,39 @@ CREATE TABLE IF NOT EXISTS cameras (
   http_port       INT UNSIGNED NULL,
   rtsp_url        VARCHAR(512) NULL,
   onvif_endpoint  VARCHAR(512) NULL,
+  extras_json     JSON NULL,
   username        VARCHAR(128) NULL,
   password_enc    VARBINARY(512) NULL,
   is_enabled      TINYINT(1) NOT NULL DEFAULT 1,
   last_seen_at    DATETIME(3) NULL,
+  offline_incidents INT UNSIGNED NOT NULL DEFAULT 0,
+  last_rtsp_probe_ok TINYINT(1) NULL,
+  monitor_hub_scope VARCHAR(16) NOT NULL DEFAULT 'local',
   created_at      DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at      DATETIME(3) NULL ON UPDATE CURRENT_TIMESTAMP(3),
   KEY ix_cameras_ip (ip_address)
+) ENGINE=InnoDB;
+
+-- Monitorização LAN (ping ICMP) — painel “Equipamentos · rede”
+CREATE TABLE IF NOT EXISTS network_equipment_hosts (
+  id                      BINARY(16) NOT NULL PRIMARY KEY,
+  label                   VARCHAR(128) NOT NULL DEFAULT '',
+  ip_address              VARCHAR(253) NOT NULL,
+  poll_interval_seconds   INT UNSIGNED NOT NULL DEFAULT 60,
+  is_enabled              TINYINT(1) NOT NULL DEFAULT 1,
+  icon_kind               VARCHAR(32) NOT NULL DEFAULT 'generic',
+  last_state              TINYINT(1) NULL,
+  last_check_utc          DATETIME(3) NULL,
+  state_since_utc         DATETIME(3) NULL,
+  total_up_seconds        BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  total_down_seconds      BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  offline_incidents       INT UNSIGNED NOT NULL DEFAULT 0,
+  monitor_hub_scope       VARCHAR(16) NOT NULL DEFAULT 'local',
+  extras_json             TEXT NULL,
+  created_at              DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at              DATETIME(3) NULL ON UPDATE CURRENT_TIMESTAMP(3),
+  KEY ix_net_eq_ip (ip_address),
+  KEY ix_net_eq_en (is_enabled)
 ) ENGINE=InnoDB;
 
 -- Pessoas cadastradas (facial)

@@ -1,0 +1,2928 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="google" content="notranslate" />
+  <title>NeoVision · Monitorização de equipamentos</title>
+  <link rel="stylesheet" href="/static/painel/dashboard.css" />
+  <style>
+    .dash-badge { font-size:0.76rem;font-weight:600;padding:0.12rem 0.42rem;border-radius:999px; display:inline-block; }
+    .st-on { background:rgba(13,122,62,0.15);color:#065f46; }
+    .st-off { background:rgba(185,28,28,0.12);color:#991b1b; }
+    .st-q { background:rgba(234,179,8,0.2);color:#92400e; }
+    .st-idle { background:rgba(100,116,139,0.15);color:#475569; }
+    .eq-table thead th {
+      font-size:0.72rem;text-transform:uppercase;color:var(--muted);letter-spacing:0.02em;
+    }
+    .eq-table tbody td { font-size:0.84rem;padding:0.35rem 0.45rem;border-bottom:1px solid var(--line);vertical-align:top; }
+    .eq-actions button { margin-right:0.2rem; }
+    .mon-toolbar {
+      display:flex; flex-wrap:wrap; gap:0.55rem 0.75rem;
+      align-items:center; justify-content:flex-end;
+      margin:0 0 0.65rem;
+    }
+    .eq-board {
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    .eq-tile {
+      border-radius: 14px;
+      border: 2px solid var(--line);
+      padding: 0.55rem 0.5rem 0.65rem;
+      cursor: pointer;
+      text-align: center;
+      background: var(--surface, #fff);
+      transition: box-shadow 0.15s, transform 0.1s;
+      user-select: none;
+      min-height: 126px;
+      display:flex; flex-direction:column; justify-content:flex-start;
+      align-items: stretch;
+    }
+    .eq-tile:hover { box-shadow: 0 6px 18px rgba(15,23,42,0.1); transform: translateY(-1px); }
+    .eq-tile.dimmed { opacity: 0.55; filter: saturate(0.85); }
+    .eq-tile--online {
+      border-color: #6ee7b7;
+      background: linear-gradient(165deg, #ecfdf5 0%, #d1fae5 55%, #ccfbf1 100%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.75), 0 1px 3px rgba(5, 150, 105, 0.12);
+      color: #064e3b;
+    }
+    .eq-tile--offline {
+      border-color: #fca5a5;
+      background: linear-gradient(165deg, #fff1f2 0%, #ffe4e6 100%);
+      box-shadow: 0 1px 2px rgba(220, 38, 38, 0.08);
+    }
+    .eq-tile--pending {
+      border-color: #fcd34d;
+      background: linear-gradient(165deg, #fffbeb 0%, #fef3c7 100%);
+      box-shadow: 0 1px 2px rgba(180, 83, 9, 0.08);
+    }
+    .eq-tile-glyph-wrap {
+      margin: 0 auto 0.4rem;
+      width: 3.35rem;
+      height: 3.35rem;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(148, 163, 184, 0.18);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+    }
+    .eq-tile--online .eq-tile-glyph-wrap {
+      background: rgba(16, 185, 129, 0.22);
+      border-color: rgba(5, 150, 105, 0.25);
+    }
+    .eq-tile--offline .eq-tile-glyph-wrap {
+      background: rgba(248, 113, 113, 0.18);
+      border-color: rgba(220, 38, 38, 0.15);
+    }
+    .eq-tile--pending .eq-tile-glyph-wrap {
+      background: rgba(251, 191, 36, 0.22);
+      border-color: rgba(217, 119, 6, 0.18);
+    }
+    .eq-tile-glyph { font-size: 1.85rem; line-height: 1; }
+    .eq-tile-name {
+      font-size: 0.87rem;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.25;
+      max-height: 2.55em;
+      overflow: hidden;
+      margin-top: 0.1rem;
+    }
+    .eq-tile--online .eq-tile-name { color: #064e3b; }
+    .eq-tile-ip-chip {
+      display: block;
+      margin-top: 0.35rem;
+      padding: 0.35rem 0.4rem;
+      border-radius: 9px;
+      font-size: 0.72rem;
+      font-family: ui-monospace, Consolas, monospace;
+      font-weight: 600;
+      background: #fff;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      color: #0f172a;
+      word-break: break-all;
+      line-height: 1.35;
+      text-align: center;
+    }
+    .eq-tile--online .eq-tile-ip-chip {
+      background: #fff;
+      border-color: rgba(52, 211, 153, 0.65);
+      color: #047857;
+    }
+    .eq-tile-pin {
+      font-size: 0.68rem;
+      font-weight: 600;
+      margin-top: 0.35rem;
+      color: var(--muted);
+    }
+    .eq-tile--online .eq-tile-pin { color: #065f46; }
+    #modal-eq-save-btn.btn-eq-primary {
+      background: linear-gradient(180deg, #d1fae5 0%, #bbf7d0 100%);
+      border: 1px solid #34d399;
+      color: #065f46;
+      font-weight: 600;
+    }
+    #modal-eq-save-btn.btn-eq-primary:hover {
+      filter: brightness(1.03);
+      border-color: #10b981;
+    }
+
+    .icon-picker {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+      gap: 0.45rem;
+      margin: 0.25rem 0 0.65rem;
+    }
+    .icon-pick {
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      padding: 0.45rem 0.35rem;
+      cursor: pointer;
+      text-align: center;
+      background: var(--surface);
+      font-size: 0.78rem;
+      transition: border-color 0.12s;
+    }
+    .icon-pick:hover { border-color: var(--nv, #0ea5e9); }
+    .icon-pick.is-active {
+      border-color: #0369a1;
+      background: rgba(3,105,161,0.06);
+      font-weight: 600;
+    }
+    .icon-pick span.g { font-size: 1.45rem; display:block; margin-bottom: 0.2rem; }
+
+    /* Hub: tipo com equipamento ICMP offline → ícone alerta vermelho */
+    #icon-strip-add .icon-strip-add-btn,
+    #icon-strip-online .icon-strip-add-btn {
+      position: relative;
+    }
+    #icon-strip-add .icon-strip-add-btn.hub-strip-offline-pulse,
+    #icon-strip-online .icon-strip-add-btn.hub-strip-offline-pulse {
+      animation: nv-hub-strip-blink 1.15s ease-in-out infinite;
+      border-color: #dc2626 !important;
+      background: rgba(254, 226, 226, 0.55) !important;
+    }
+    @keyframes nv-hub-strip-blink {
+      0%, 100% { box-shadow: 0 0 0 1px rgba(220,38,38,0.35); background: var(--surface); }
+      50% { box-shadow: 0 0 16px 3px rgba(220,38,38,0.55); background: #fee2e2; border-color: #ef4444; }
+    }
+    .hub-strip-offbadge {
+      position: absolute;
+      top: -0.08rem;
+      right: -0.05rem;
+      min-width: 1.05rem;
+      height: 1.05rem;
+      padding: 0 0.28rem;
+      border-radius: 999px;
+      font-size: 0.65rem;
+      font-weight: 800;
+      line-height: 1.05rem;
+      background: #b91c1c;
+      color: #fff;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 4px rgba(15,23,42,0.25);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .category-offline-alert {
+      margin: 0.5rem 0 0;
+      padding: 0.65rem 0.85rem;
+      border-radius: 12px;
+      border: 2px solid #fca5a5;
+      background: linear-gradient(165deg, #fff1f2 0%, #ffe4e6 100%);
+      color: #7f1d1d;
+    }
+    .category-offline-alert__title { font-size: 0.9rem; line-height: 1.45; margin-bottom: 0.35rem; }
+    .category-offline-alert__list {
+      margin: 0;
+      padding: 0.25rem 0 0 1.15rem;
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+    .category-offline-alert__list code {
+      font-size: 0.78rem;
+      background: rgba(255,255,255,0.75);
+      padding: 0.08rem 0.28rem;
+      border-radius: 6px;
+    }
+
+    .eq-tile--offline.eq-tile-offline-blink:not(.dimmed) {
+      animation: nv-tile-offline-pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes nv-tile-offline-pulse {
+      0%, 100% { border-color: #fca5a5; background: linear-gradient(165deg, #fff1f2 0%, #ffe4e6 100%); box-shadow: 0 1px 2px rgba(220,38,38,0.08); }
+      50% { border-color: #dc2626; background: #fee2e2; box-shadow: 0 0 12px rgba(220,38,38,0.25); }
+    }
+
+    #backdrop-camera-add {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 82;
+      background: rgba(15, 23, 42, 0.45);
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    #backdrop-camera-add.show { display: flex; }
+    #backdrop-quedas {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 83;
+      background: rgba(15, 23, 42, 0.45);
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    #backdrop-quedas.show { display: flex; }
+    #backdrop-sistemas {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 82;
+      background: rgba(15, 23, 42, 0.45);
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    #backdrop-sistemas.show { display: flex; }
+    .nv-sistemas-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 0.65rem;
+    }
+    .nv-sistemas-actions .btn-submit,
+    .nv-sistemas-actions a.btn-submit {
+      margin: 0;
+      justify-content: center;
+      text-align: center;
+      text-decoration: none;
+      box-sizing: border-box;
+    }
+    /* App NeoVision-Rede: ferramentas agrupadas em «Sistemas» */
+    .nv-rede-toolbar-sistemas { display: none !important; }
+    html.nv-rede-only .nv-rede-toolbar-sistemas { display: inline-flex !important; }
+    html.nv-rede-only .nv-hub-secondary-inline { display: none !important; }
+    html.nv-rede-only #btn-category-table { display: none !important; }
+    #backdrop,
+    #backdrop-add,
+    #backdrop-edit,
+    #backdrop-edit-cam,
+    #backdrop-site-add,
+    #backdrop-confirm-del {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      background: rgba(15, 23, 42, 0.45);
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    #backdrop-confirm-del { z-index: 90; }
+    #backdrop.show,
+    #backdrop-add.show,
+    #backdrop-edit.show,
+    #backdrop-edit-cam.show,
+    #backdrop-site-add.show,
+    #backdrop-confirm-del.show { display: flex; }
+    .modal-eq.modal-wide { max-width: 40rem; }
+    .modal-eq.modal-cam-extra { max-width: 34rem; }
+    .modal-eq {
+      background: var(--surface, #fff);
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      padding: 1rem 1.15rem;
+      max-width: 22rem;
+      width: 100%;
+      max-height: 88vh;
+      overflow-y: auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.14);
+    }
+    .modal-eq h4 { margin: 0 0 0.5rem; font-size: 1rem; color: var(--nv); }
+    .kv { font-size: 0.85rem; line-height: 1.55; margin: 0.35rem 0; }
+    .kv span.k { color: var(--muted); display: inline-block; min-width: 8rem; }
+
+    #monitor-category-view { display: none; }
+    #monitor-category-view.is-visible { display: block; }
+    .hub-hidden { display: none !important; }
+    .cat-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 0.65rem;
+      align-items: center;
+      justify-content: flex-start;
+      margin-bottom: 0.6rem;
+    }
+    .cat-toolbar h3 {
+      margin: 0;
+      flex: 1;
+      min-width: 140px;
+      font-size: 1.08rem;
+      color: var(--nv, #0369a1);
+    }
+    .cat-toolbar .cat-actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: flex-end; }
+    #dvr-embutido-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 10050;
+      flex-direction: column;
+      background: #0f172a;
+      margin: 0;
+    }
+    #dvr-embutido-toolbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      padding: 0.55rem 0.85rem;
+      background: rgba(15,23,42,0.92);
+      border-bottom: 1px solid rgba(148,163,184,0.35);
+      color: #f1f5f9;
+    }
+    #dvr-embutido-toolbar span {
+      flex: 1;
+      min-width: 120px;
+      font-size: 0.76rem;
+      color: rgba(226,232,240,0.85);
+      line-height: 1.4;
+    }
+    #dvr-embutido-if {
+      flex: 1 1 auto;
+      width: 100%;
+      border: none;
+      min-height: 0;
+      background: #fff;
+    }
+    html.nv-rede-only .nv-full-app-only { display: none !important; }
+    html.nv-rede-only header .brand { pointer-events: none; cursor: default; }
+    html.nv-rede-only .nv-rede-only { display: block !important; }
+    /* <a> não herda estilos de button.btn-submit — no app Rede o Wi‑Fi fica com o mesmo formato dos botões */
+    html.nv-rede-only #lnk-rastreio-wifi.btn-submit {
+      padding: 0.75rem 1.35rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 12px;
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      line-height: 1.2;
+      border: 1px solid #334155 !important;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+    }
+    html.nv-rede-only #sistemas-lnk-wifi.btn-submit {
+      padding: 0.75rem 1.35rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.2;
+      border: 1px solid #334155 !important;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+      background: #334155;
+      border-color: #334155;
+      color: #fff;
+    }
+  </style>
+  <script>
+    (function () {
+      try {
+        var m = new URLSearchParams(location.search || "").get("modo");
+        if (m === "rede") document.documentElement.classList.add("nv-rede-only");
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <div class="bg" aria-hidden="true"></div>
+  <div class="shell" style="max-width:92rem;">
+    <header class="head">
+      <a class="brand" href="/painel">
+        <span class="logo" aria-hidden="true">◉</span>
+        <div>
+          <h1>Monitorização de equipamentos</h1>
+          <p class="sub">Equipamentos · rede</p>
+        </div>
+      </a>
+      <a class="back-painel nv-full-app-only" href="/painel">← Painel</a>
+    </header>
+
+    <section class="card" id="add-section">
+      <div class="mon-toolbar" style="justify-content:space-between">
+        <div style="display:flex;flex-direction:column;gap:0.35rem;min-width:min(100%,12rem)">
+          <h3 style="margin:0">Adicionar e ferramentas</h3>
+          <p class="field-hint" style="margin:0;font-size:0.82rem;line-height:1.4;max-width:36rem">
+            <strong>+ Equipamento (ping)</strong> para ICMP. Use o botão <strong>Site</strong> (ao lado de Router) para monitor HTTP. Para câmaras, escolha o tipo <strong>Câmara</strong> abaixo e <strong>Adicionar</strong>. O campo <strong>URL para monitor HTTP</strong> no equipamento ICMP serve para qualquer ícone.
+            Na NeoVision‑Rede, <strong>Sistemas</strong> inclui relatório PDF de quedas, Wi‑Fi e backups.
+          </p>
+        </div>
+        <div class="hub-toolbar-tools" style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center">
+          <button type="button" class="btn-submit btn-eq-primary" style="margin:0" id="btn-hub-add-icmp" title="Registar IP ou hostname para ping ICMP (escolhe o ícone do tipo no formulário)">+ Equipamento (ping)</button>
+          <button type="button" class="btn-submit nv-rede-toolbar-sistemas" style="margin:0;background:#334155;border-color:#334155;color:#fff" id="btn-hub-sistemas">Sistemas</button>
+          <a class="btn-submit nv-hub-secondary-inline" id="lnk-rastreio-wifi" style="margin:0;background:#334155;border-color:#334155;color:#fff;display:inline-flex;align-items:center;text-decoration:none" href="/painel/mapa-wifi">Rastreio Wi‑Fi</a>
+          <button type="button" class="btn-submit nv-hub-secondary-inline" style="margin:0;background:#334155;border-color:#334155;color:#fff" id="btn-backup-export" title="Guardar JSON para outro PC">Backup · exportar</button>
+          <button type="button" class="btn-submit nv-hub-secondary-inline" style="margin:0;background:#334155;border-color:#334155;color:#fff" id="btn-backup-import" title="Restaurar lista a partir de ficheiro">Backup · importar</button>
+          <input type="file" id="nv-backup-file-input" accept="application/json,.json" style="display:none" aria-hidden="true" />
+          <button type="button" class="btn-submit nv-hub-secondary-inline" style="margin:0;background:#64748b;border-color:#475569;color:#fff" id="btn-quedas-log">Quedas (log)</button>
+          <button type="button" class="btn-submit nv-full-app-only" style="margin:0;background:#334155;border-color:#334155;color:#fff" id="btn-relatorio">Relatório (ICMP, CSV)</button>
+          <button type="button" class="btn-submit nv-hub-secondary-inline" style="margin:0;background:#64748b;border-color:#475569;color:#fff" id="btn-toggle-table">Lista em tabela</button>
+        </div>
+      </div>
+      <div style="margin-top:0.85rem;padding-top:0.75rem;border-top:1px solid var(--line);">
+        <h3 style="margin:0 0 0.35rem;font-size:1rem">Tipos de equipamento — <strong>rede local</strong></h3>
+        <p class="field-hint" style="margin:0 0 0.45rem;font-size:0.8rem;max-width:40rem">
+          O que adicionar a partir desta grelha fica apenas no âmbito <strong>local</strong> (LAN). Switch, router, <strong>Site</strong> (HTTP público que queira agrupar como local), câmara, Wi‑Fi, servidor, etc. Alertas a piscar nos ícones usam só estes equipamentos.
+        </p>
+        <div class="icon-picker" id="icon-strip-add" role="group" aria-label="Tipo de equipamento — todos (mapa completo)"></div>
+      </div>
+    </section>
+
+    <section class="card" id="hub-online-card" style="margin-top:0.85rem;">
+      <h3 style="margin:0 0 0.35rem;font-size:1rem">Tipos de equipamento — <strong>Internet / remoto</strong></h3>
+      <p class="field-hint" style="margin:0 0 0.45rem;font-size:0.8rem;max-width:40rem">
+        Mapas e listas <strong>separados</strong>: o que registar a partir desta grelha fica só no âmbito <strong>online</strong> (monitorização à distança). Não se mistura com a grelha «rede local» acima.
+      </p>
+      <div class="icon-picker" id="icon-strip-online" role="group" aria-label="Tipo de equipamento — só online"></div>
+    </section>
+
+    <section class="card" id="monitor-category-view">
+      <div class="cat-toolbar">
+        <button type="button" class="btn-submit" style="background:#475569;border-color:#334155;margin:0" id="btn-category-back">
+          ← Tipos de equipamento
+        </button>
+        <h3 id="category-view-title">Categoria</h3>
+        <div class="cat-actions">
+          <button type="button" class="btn-submit btn-eq-primary" style="margin:0" id="btn-category-add">Adicionar</button>
+          <button type="button" class="btn-submit nv-rede-toolbar-sistemas" style="margin:0;background:#334155;border-color:#334155;color:#fff" id="btn-category-sistemas">Sistemas</button>
+          <button type="button" class="btn-submit nv-full-app-only" style="margin:0;background:#334155;border-color:#334155;color:#fff" id="btn-category-relatorio">Relatório (CSV)</button>
+          <button type="button" class="btn-submit" style="margin:0;background:#64748b;border-color:#475569;color:#fff" id="btn-category-table">Lista em tabela</button>
+          <a class="btn-submit nv-full-app-only" style="margin:0;display:inline-flex;align-items:center;text-decoration:none;background:#0ea5e9;border-color:#0284c7;color:#fff" id="lnk-category-advanced-cameras" href="/painel/cameras">Câmeras (RTSP &amp; ONVIF)</a>
+        </div>
+      </div>
+      <p id="category-view-hint" class="field-hint" style="margin-top:0.35rem"></p>
+      <div id="category-offline-alert" class="category-offline-alert" style="display:none" role="alert" aria-live="polite"></div>
+      <h3 style="margin:0.85rem 0 0.35rem;font-size:1rem">Mapa desta categoria</h3>
+      <div id="eq-board" class="eq-board" aria-live="polite"></div>
+      <p id="eq-board-empty" class="field-hint" style="margin-top:0.65rem;display:none;">
+        Ainda não há entradas — usa <strong>Adicionar</strong> acima.
+      </p>
+    </section>
+
+    <section class="card" id="table-section" style="display:none;margin-top:0.85rem;">
+      <h3 id="table-section-title">Lista e estado atual</h3>
+      <div style="overflow-x:auto;">
+        <table class="eq-table" style="min-width:900px;width:100%;border-collapse:collapse">
+          <thead id="eq-table-head">
+            <tr>
+              <th>Nome</th>
+              <th>Alvo</th>
+              <th>Estado</th>
+              <th>Neste estado / tempo</th>
+              <th>Total online</th>
+              <th>Total offline</th>
+              <th>Último ping</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="eq-tbody">
+            <tr><td colspan="8" class="field-hint">A carregar…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div id="backdrop-camera-add" role="dialog" aria-modal="true" aria-labelledby="modal-cam-add-title">
+    <div class="modal-eq modal-cam-extra" id="modal-cam-wrap">
+      <h4 id="modal-cam-add-title">Nova câmara IP</h4>
+      <p style="margin:0 0 0.6rem;font-size:0.84rem;color:var(--muted)">
+        IP público ou local. Se não usar URL RTSP completa, indique <strong>porta RTSP</strong> e caminho (ex.: outra cidade via port forwarding).
+      </p>
+      <form id="modal-cam-form" class="form-stack" action="#" style="margin-top:0.35rem">
+        <div class="field">
+          <label for="modal-cam-name">Nome (opcional)</label>
+          <input id="modal-cam-name" type="text" maxlength="128" placeholder="Ex.: Loja SP" />
+        </div>
+        <div class="field">
+          <label for="modal-cam-ip">Endereço IP (IPv4/IPv6 público ou local)</label>
+          <input id="modal-cam-ip" type="text" required placeholder="203.0.113.50" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="modal-cam-http-port">Porta HTTP / ONVIF (opcional)</label>
+          <input id="modal-cam-http-port" type="number" min="1" max="65535" placeholder="80" />
+        </div>
+        <div class="field">
+          <label for="modal-cam-rtsp-full">URL RTSP completa (opcional)</label>
+          <input id="modal-cam-rtsp-full" type="text" maxlength="512" placeholder="rtsp://user:senha@host:554/stream1" autocomplete="off" />
+        </div>
+        <p style="margin:0.15rem 0 0.35rem;font-size:0.78rem;color:var(--muted)">Se não preencher a URL acima, monte abaixo (porta + caminho + user/senha).</p>
+        <div class="field">
+          <label for="modal-cam-rtsp-port">Porta RTSP</label>
+          <input id="modal-cam-rtsp-port" type="number" min="1" max="65535" placeholder="554 (padrão se vazio)" />
+        </div>
+        <div class="field">
+          <label for="modal-cam-rtsp-path">Caminho do stream</label>
+          <input id="modal-cam-rtsp-path" type="text" maxlength="256" placeholder="/stream1 ou /h264/ch1/main/av_stream" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="modal-cam-rtsp-user">Utilizador RTSP (opcional)</label>
+          <input id="modal-cam-rtsp-user" type="text" maxlength="128" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="modal-cam-rtsp-pass">Senha RTSP (opcional)</label>
+          <input id="modal-cam-rtsp-pass" type="password" maxlength="256" autocomplete="new-password" />
+        </div>
+        <p id="modal-cam-form-msg" class="feedback" style="margin-top:0.65rem;display:none;" role="status"></p>
+        <div style="display:flex;gap:0.45rem;flex-wrap:wrap;margin-top:0.85rem;">
+          <button type="submit" class="btn-submit btn-eq-primary" id="modal-cam-save">Guardar</button>
+          <button type="button" class="btn-submit" style="background:#475569;border-color:#334155" id="modal-cam-cancel">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="backdrop-quedas" role="dialog" aria-modal="true" aria-labelledby="quedas-modal-title">
+    <div class="modal-eq modal-wide">
+      <h4 id="quedas-modal-title">Registo de quedas</h4>
+      <p style="margin:0 0 0.65rem;font-size:0.84rem;color:var(--muted)">Contagem de vezes que cada item passou a <strong>offline</strong> (ping ICMP ou falha HTTP, se configurado; para câmeras, falha de RTSP após estar OK).</p>
+      <div id="quedas-modal-body" style="font-size:0.88rem">A carregar…</div>
+      <button type="button" class="btn-submit" style="margin-top:0.85rem;background:#475569;border-color:#334155" id="quedas-modal-close">Fechar</button>
+    </div>
+  </div>
+
+  <div id="backdrop-sistemas" role="dialog" aria-modal="true" aria-labelledby="sistemas-modal-title">
+    <div class="modal-eq" style="max-width:28rem">
+      <h4 id="sistemas-modal-title">Sistemas</h4>
+      <p style="margin:0;font-size:0.84rem;color:var(--muted);line-height:1.5">
+        Ferramentas da app <strong>NeoVision‑Rede</strong>: rede Wi‑Fi, cópia de segurança da lista de equipamentos ICMP e registo de quedas (logs).
+      </p>
+      <div class="nv-sistemas-actions" role="group" aria-label="Acções de sistemas">
+        <a class="btn-submit" id="sistemas-lnk-wifi" href="/painel/mapa-wifi">Rastreio Wi‑Fi</a>
+        <button type="button" class="btn-submit" style="background:#334155;border-color:#334155;color:#fff" id="sistemas-btn-export">Backup · exportar</button>
+        <button type="button" class="btn-submit" style="background:#334155;border-color:#334155;color:#fff" id="sistemas-btn-import">Backup · importar</button>
+        <button type="button" class="btn-submit" style="background:#64748b;border-color:#475569;color:#fff" id="sistemas-btn-quedas">Registo de quedas (log)</button>
+        <div style="display:flex;gap:0.45rem;">
+          <button type="button" class="btn-submit btn-eq-primary" id="sistemas-btn-pdf" style="flex:1" title="Transferir PDF">Relatório PDF</button>
+          <button type="button" class="btn-submit" id="sistemas-btn-csv" style="flex:1;background:#059669;border-color:#047857;color:#fff" title="Transferir CSV">Relatório CSV</button>
+        </div>
+        <button type="button" class="btn-submit" style="background:#64748b;border-color:#475569;color:#fff" id="sistemas-btn-tabela">Lista em tabela</button>
+      </div>
+      <button type="button" class="btn-submit" style="margin-top:0.85rem;background:#475569;border-color:#334155" id="sistemas-modal-close">Fechar</button>
+    </div>
+  </div>
+
+  <div id="backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-detail-title">
+    <div class="modal-eq modal-wide" id="modal-detail">
+      <h4 id="modal-detail-title">Detalhe do equipamento</h4>
+      <div id="modal-detail-body"></div>
+      <button type="button" class="btn-submit" style="margin-top:0.75rem;background:#475569;border-color:#334155" id="modal-detail-close">Fechar</button>
+    </div>
+  </div>
+
+  <div id="backdrop-add" role="dialog" aria-modal="true" aria-labelledby="modal-add-title">
+    <div class="modal-eq" style="max-width:26rem">
+      <h4 id="modal-add-title">Novo equipamento</h4>
+      <form id="modal-eq-form" class="form-stack" action="#" style="margin-top:0.35rem">
+        <input type="hidden" id="modal-editing-id" value="" />
+        <input type="hidden" id="modal-eq-icon-kind" value="generic" />
+        <p style="margin:0 0 0.15rem;font-size:0.82rem;color:var(--muted)">Tipo (ícone no mapa)</p>
+        <div class="icon-picker" id="modal-icon-picker" role="radiogroup" aria-label="Tipo no mapa"></div>
+        <div class="field">
+          <label for="modal-eq-name">Nome (ex.: Switch PoE sala)</label>
+          <input id="modal-eq-name" type="text" maxlength="128" placeholder="Descrição opcional" />
+        </div>
+        <div class="field">
+          <label for="modal-eq-ip">IP ou hostname</label>
+          <input id="modal-eq-ip" type="text" required placeholder="192.168.1.1 ou unifi.local" autocomplete="off" />
+        </div>
+        <div class="field" id="modal-eq-row-http-monitor">
+          <label for="modal-eq-http-monitor" id="modal-eq-http-monitor-label">URL para monitor HTTP (opcional)</label>
+          <input id="modal-eq-http-monitor" type="text" maxlength="2048" placeholder="http://189.50.50.253:8000/doc/index.html" autocomplete="off" />
+          <small class="field-hint" id="modal-eq-http-monitor-hint" style="display:block;margin-top:0.3rem;font-size:0.76rem;color:var(--muted);">
+            Com URL preenchida, a NeoVision faz um pedido HTTP (GET) a este endereço — porta e caminho incluídos — em vez de ping ICMP. Vazio = só ICMP ao IP acima. Vale para qualquer tipo de equipamento que escolher no mapa.
+          </small>
+        </div>
+        <div class="field" id="modal-eq-row-interval">
+          <label for="modal-eq-interval">Intervalo ping (segundos)</label>
+          <input id="modal-eq-interval" type="number" min="10" max="86400" value="60" />
+        </div>
+        <label style="cursor:pointer;display:flex;align-items:center;gap:0.45rem;margin:0.25rem 0 0;font-weight:500;">
+          <input type="checkbox" id="modal-eq-enabled" checked />
+          Monitor ativo
+        </label>
+        <fieldset id="modal-eq-dvr-fieldset-wrap" style="margin:0.75rem 0 0;padding:0.65rem 0.7rem;border-radius:12px;border:1px solid var(--line);">
+          <legend style="font-size:0.8rem;color:var(--muted);padding:0 0.35rem;">Painel web DVR / NVR (opcional)</legend>
+          <p style="margin:0 0 0.55rem;font-size:0.78rem;color:var(--muted);line-height:1.45;">
+            <strong>Login automático (Basic Auth):</strong> no campo URL use só o endereço completo, por exemplo
+            <code>http://admin:sua_senha@10.100.103.8:8008/</code> — não precisa preencher usuário e senha abaixo.
+            Se preferir, use URL sem login e preencha usuário e senha; o efeito é o mesmo.
+            Muitos DVR usam tela de login em HTML: nesse caso não dá para entrar sozinho; só funciona quando o equipamento aceita Basic Auth na URL.
+            Na app NeoVision, «Abrir DVR» tenta primeiro uma janela interna; o painel embutido (tela inteira) pode ficar branco se o gravador bloquear.
+          </p>
+          <div class="field">
+            <label for="modal-eq-dvr-url">URL (ex.: <code>http://10.100.103.8:8008/</code>)</label>
+            <input id="modal-eq-dvr-url" type="text" maxlength="512" placeholder="http://10.x.x.x:8008/ ou http://admin:senha@10.x.x.x:8008/" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="modal-eq-dvr-user">Usuário</label>
+            <input id="modal-eq-dvr-user" type="text" maxlength="128" autocomplete="username" />
+          </div>
+          <div class="field">
+            <label for="modal-eq-dvr-pass">Senha</label>
+            <input id="modal-eq-dvr-pass" type="password" maxlength="256" autocomplete="current-password" />
+            <small class="field-hint" style="display:block;margin-top:0.3rem;font-size:0.76rem;color:var(--muted);">
+              Ao editar, deixe em branco para manter a senha guardada. Marque «Limpar» para apagar só a senha.
+            </small>
+          </div>
+          <label style="cursor:pointer;display:flex;align-items:center;gap:0.45rem;margin:0.35rem 0 0;font-size:0.82rem;color:var(--ink);font-weight:500;">
+            <input type="checkbox" id="modal-eq-dvr-clear-senha" />
+            Limpar senha guardada
+          </label>
+        </fieldset>
+        <p id="modal-eq-form-msg" class="feedback" style="margin-top:0.65rem;display:none;" role="status" aria-live="polite"></p>
+        <div style="display:flex;gap:0.45rem;flex-wrap:wrap;margin-top:0.85rem;">
+          <button type="submit" class="btn-submit btn-eq-primary" id="modal-eq-save-btn">Guardar</button>
+          <button type="button" class="btn-submit" style="background:#475569;border-color:#334155" id="modal-eq-cancel">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="backdrop-edit" role="dialog" aria-modal="true">
+    <div class="modal-eq">
+      <h4>Editar rápido</h4>
+      <input type="hidden" id="edit-id" />
+      <div class="field" style="margin-bottom:0.5rem;">
+        <label for="edit-name">Nome</label>
+        <input id="edit-name" type="text" maxlength="128" />
+      </div>
+      <div class="field" style="margin-bottom:0.65rem;">
+        <label for="edit-ip">IP ou hostname</label>
+        <input id="edit-ip" type="text" required />
+      </div>
+      <div class="field" style="margin-bottom:0.5rem;display:none;" id="edit-row-interval">
+        <label for="edit-interval">Intervalo (s)</label>
+        <input id="edit-interval" type="number" min="10" max="86400" />
+      </div>
+      <div class="field" style="margin-bottom:0.65rem;display:none;" id="edit-row-http-url">
+        <label for="edit-http-url">URL monitor HTTP</label>
+        <input id="edit-http-url" type="text" maxlength="2048" autocomplete="off" />
+      </div>
+      <div style="display:flex;gap:0.45rem;flex-wrap:wrap;align-items:center;">
+        <button type="button" class="btn-submit btn-eq-primary" id="edit-save">Guardar</button>
+        <button type="button" class="btn-submit" style="background:#475569;border-color:#334155" id="edit-cancel">Cancelar</button>
+        <button type="button" class="btn-submit" style="margin-left:auto;background:#b91c1c;border-color:#991b1b;color:#fff" id="edit-delete">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="backdrop-edit-cam" role="dialog" aria-modal="true" aria-labelledby="backdrop-edit-cam-title">
+    <div class="modal-eq">
+      <h4 id="backdrop-edit-cam-title">Editar rápido</h4>
+      <input type="hidden" id="edit-cam-id" />
+      <div class="field" style="margin-bottom:0.5rem;">
+        <label for="edit-cam-name">Nome</label>
+        <input id="edit-cam-name" type="text" maxlength="128" />
+      </div>
+      <div class="field" style="margin-bottom:0.65rem;">
+        <label for="edit-cam-ip">IP ou hostname</label>
+        <input id="edit-cam-ip" type="text" required />
+      </div>
+      <div style="display:flex;gap:0.45rem;flex-wrap:wrap;align-items:center;">
+        <button type="button" class="btn-submit btn-eq-primary" id="edit-cam-save">Guardar</button>
+        <button type="button" class="btn-submit" style="background:#475569;border-color:#334155" id="edit-cam-cancel">Cancelar</button>
+        <button type="button" class="btn-submit" style="margin-left:auto;background:#b91c1c;border-color:#991b1b;color:#fff" id="edit-cam-delete">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="backdrop-site-add" role="dialog" aria-modal="true" aria-labelledby="modal-site-title">
+    <div class="modal-eq" style="max-width:26rem">
+      <h4 id="modal-site-title">Novo site (HTTP)</h4>
+      <form id="modal-site-form" class="form-stack" action="#" style="margin-top:0.35rem">
+        <div class="field">
+          <label for="modal-site-name">Nome</label>
+          <input id="modal-site-name" type="text" maxlength="128" placeholder="Ex.: Portal gravador" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="modal-site-url">URL HTTP(S)</label>
+          <input id="modal-site-url" type="text" required maxlength="2048" placeholder="http://189.50.50.253:8000/doc/index.html#/portal/login" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="modal-site-interval">Intervalo (segundos)</label>
+          <input id="modal-site-interval" type="number" min="10" max="86400" value="60" />
+        </div>
+        <p id="modal-site-form-msg" class="feedback" style="margin-top:0.65rem;display:none;" role="status" aria-live="polite"></p>
+        <div style="display:flex;gap:0.45rem;flex-wrap:wrap;margin-top:0.85rem;">
+          <button type="submit" class="btn-submit btn-eq-primary" id="modal-site-save-btn">Guardar</button>
+          <button type="button" class="btn-submit" style="background:#475569;border-color:#334155" id="modal-site-cancel">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="backdrop-confirm-del" role="dialog" aria-modal="true" aria-labelledby="confirm-del-title">
+    <div class="modal-eq" style="max-width:24rem">
+      <h4 id="confirm-del-title" style="color:#991b1b">Confirmar eliminação</h4>
+      <p id="confirm-del-body" style="margin:0.5rem 0 1rem;font-size:0.9rem;line-height:1.5;color:var(--ink)">
+        Tem a certeza que deseja <strong>eliminar</strong> este equipamento da monitorização? Esta acção não pode ser anulada.
+      </p>
+      <div style="display:flex;gap:0.45rem;flex-wrap:wrap;justify-content:flex-end;">
+        <button type="button" class="btn-submit" style="background:#64748b;border-color:#475569" id="confirm-del-no">Não, cancelar</button>
+        <button type="button" class="btn-submit" style="background:#b91c1c;border-color:#991b1b;color:#fff" id="confirm-del-yes">Sim, eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="dvr-embutido-backdrop" role="presentation" aria-hidden="true">
+    <div id="dvr-embutido-toolbar">
+      <button type="button" class="btn-submit btn-eq-primary" id="dvr-embutido-close" style="margin:0">← Voltar ao monitor</button>
+      <button type="button" class="btn-submit" style="margin:0;background:#334155;border-color:#1e293b;color:#fff" id="dvr-embutido-janela">
+        Abrir esta vista numa segunda janela (app)
+      </button>
+      <span id="dvr-embutido-hint" style="display:block;margin-top:0.35rem;width:100%">Painel DVR embutido. Se ficar só branco, o gravador pode recusar abrir dentro de outra página (segurança). Use «Segunda janela» ou só o link completo com login na URL (<code>http://usuario:senha@IP/</code>).</span>
+    </div>
+    <iframe id="dvr-embutido-if" title="Interface web DVR"></iframe>
+  </div>
+
+  <script>
+(function () {
+  if (document.documentElement.classList.contains("nv-rede-only")) {
+    var wl = document.getElementById("lnk-rastreio-wifi");
+    if (wl) wl.setAttribute("href", "/painel/mapa-wifi?modo=rede");
+    var swifi = document.getElementById("sistemas-lnk-wifi");
+    if (swifi) swifi.setAttribute("href", "/painel/mapa-wifi?modo=rede");
+  }
+  var ICONS = [
+    { kind: "switch", title: "Switch", g: "\uD83D\uDD00" },
+    { kind: "router", title: "Router", g: "\uD83C\uDF10" },
+    { kind: "camera", title: "Câmara", g: "\uD83D\uDCF7" },
+    { kind: "wifi", title: "Wi‑Fi / antena", g: "\uD83D\uDCF6" },
+    { kind: "server", title: "Servidor", g: "\uD83D\uDCBB" },
+    { kind: "firewall", title: "Firewall", g: "\uD83D\uDEE1" },
+    { kind: "printer", title: "Impressora", g: "\uD83D\uDDA8" },
+    { kind: "nas", title: "DVR / NVR", g: "\uD83D\uDCFC" },
+    { kind: "access_point", title: "Access point", g: "\uD83D\uDCE1" },
+    { kind: "generic", title: "Outro", g: "\u26AB" },
+  ];
+
+  /** Botão extra na grelha (após Router): categoria Site (HTTP). */
+  var HUB_SITE_STRIP_KIND = "site";
+
+  /** Entradas da grelha do hub: tipos + «Site» logo após Router. */
+  function hubStripIconEntries() {
+    var out = [];
+    for (var i = 0; i < ICONS.length; i++) {
+      out.push(ICONS[i]);
+      if (ICONS[i].kind === "router") {
+        out.push({ kind: HUB_SITE_STRIP_KIND, title: "Site", g: "\uD83D\uDD17" });
+      }
+    }
+    return out;
+  }
+
+  /** @typedef {'hub'|'category'} ViewMode */
+  /** @type {ViewMode} */
+  var viewMode = "hub";
+  /** @type {string|null} */
+  var catKind = null;
+  /** @type {'local'|'online'} */
+  var categoryHubScope = "local";
+  /** @type {any[]} */
+  var icmpLocal = [];
+  /** @type {any[]} */
+  var icmpOnline = [];
+  /** @type {any[]} */
+  var camerasList = [];
+  /** Modal equipamento: Internet (URL+intervalo); local (IP+intervalo, sem URL HTTP no add). */
+  var equipmentModalOnlineMode = false;
+  /** DVR embutido: URL atual (para «segunda janela»). */
+  /** @type {string} */
+  var dvrEmbeddedCurrentUrl = "";
+
+  function icmpMerged() {
+    return icmpLocal.concat(icmpOnline);
+  }
+
+  function isRedeOnlyApp() {
+    return document.documentElement.classList.contains("nv-rede-only");
+  }
+
+  function normalizeUserHttpUrl(raw) {
+    var s = String(raw || "").trim();
+    if (!s) return "";
+    if (!/^https?:\/\//i.test(s)) s = "http://" + s;
+    return s;
+  }
+
+  function hostFromHttpUrl(u) {
+    try {
+      var s = normalizeUserHttpUrl(u);
+      if (!s) return "";
+      var url = new URL(s);
+      var h = url.hostname || "";
+      if (h.length >= 2 && h.charCodeAt(0) === 91 && h.charCodeAt(h.length - 1) === 93)
+        return h.slice(1, -1);
+      return h;
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function openSiteMonitorModal() {
+    var bd = document.getElementById("backdrop-site-add");
+    var msg = document.getElementById("modal-site-form-msg");
+    if (msg) {
+      msg.style.display = "none";
+      msg.textContent = "";
+      msg.className = "feedback";
+    }
+    document.getElementById("modal-site-form").reset();
+    var iv = document.getElementById("modal-site-interval");
+    if (iv) iv.value = "60";
+    if (bd) bd.classList.add("show");
+    setTimeout(function () {
+      var el = document.getElementById("modal-site-url");
+      if (el) el.focus();
+    }, 60);
+  }
+
+  function closeSiteMonitorModal() {
+    var bd = document.getElementById("backdrop-site-add");
+    if (bd) bd.classList.remove("show");
+  }
+
+  function iconTitle(kind) {
+    for (var i = 0; i < ICONS.length; i++) if (ICONS[i].kind === kind) return ICONS[i].title;
+    return kind || "Equipamento";
+  }
+
+  function goHub() {
+    viewMode = "hub";
+    catKind = null;
+    categoryHubScope = "local";
+    document.getElementById("add-section").classList.remove("hub-hidden");
+    var hubOn = document.getElementById("hub-online-card");
+    if (hubOn) hubOn.classList.remove("hub-hidden");
+    document.getElementById("monitor-category-view").classList.remove("is-visible");
+    repaintBoardArea();
+    if (tableIsShown()) syncTableContents();
+    syncTableToolbarLabels(tableIsShown());
+  }
+
+  /** @param {string} kind */
+  /** @param {'local'|'online'} hubScope */
+  function enterCategory(kind, hubScope) {
+    viewMode = "category";
+    catKind = kind;
+    categoryHubScope = hubScope === "online" ? "online" : "local";
+    document.getElementById("add-section").classList.add("hub-hidden");
+    var hubOn = document.getElementById("hub-online-card");
+    if (hubOn) hubOn.classList.add("hub-hidden");
+    var catCard = document.getElementById("monitor-category-view");
+    catCard.classList.add("is-visible");
+    var titleEl = document.getElementById("category-view-title");
+    var hintEl = document.getElementById("category-view-hint");
+    var adv = document.getElementById("lnk-category-advanced-cameras");
+    var btnRel = document.getElementById("btn-category-relatorio");
+    var redeOnly = document.documentElement.classList.contains("nv-rede-only");
+
+    var scopeSuffix = categoryHubScope === "online" ? " · Internet / remoto" : " · rede local";
+    if (kind === "camera") {
+      titleEl.textContent = "Câmaras IP" + scopeSuffix;
+    } else if (kind === HUB_SITE_STRIP_KIND) {
+      titleEl.textContent = "Sites HTTP" + scopeSuffix;
+    } else {
+      titleEl.textContent = iconTitle(kind) + " · ICMP" + scopeSuffix;
+    }
+
+    var scopeHint =
+      categoryHubScope === "online"
+        ? "<br/><span style=\"color:#047857;font-weight:600\">Âmbito:</span> lista <strong>separada</strong> da rede local — só entradas registadas como Internet/remoto."
+        : "<br/><span style=\"color:#047857;font-weight:600\">Âmbito:</span> lista <strong>separada</strong> da Internet — só equipamentos da sua LAN.";
+
+    hintEl.innerHTML =
+      kind === "camera"
+        ? (redeOnly
+          ? "Mapa das <strong>câmeras</strong> neste âmbito (<code>GET /cameras?hub_scope=…</code>). Duplo clique no cartão para editar rápido nome/IP."
+          : "Mapa das <strong>câmeras</strong> neste âmbito. Duplo clique: edição rápida; configuração RTSP em <a href=\"/painel/cameras\">Câmeras</a>.") +
+          scopeHint
+        : kind === HUB_SITE_STRIP_KIND
+          ? "Um registo por URL: monitor GET HTTP(S). Duplo clique para editar rápido." + scopeHint
+          : "Mapa ICMP deste tipo neste âmbito. Duplo clique para edição rápida." +
+              (categoryHubScope === "online"
+                ? " Em «Internet», use <strong>Adicionar</strong> com nome + URL + intervalo."
+                : " Em «rede local», use <strong>nome + IP + intervalo</strong> de ping (10–86400 s).") +
+              scopeHint;
+
+    if (kind === "camera") {
+      adv.style.display = "inline-flex";
+      btnRel.style.display = "none";
+    } else {
+      adv.style.display = "none";
+      btnRel.style.display = "inline-flex";
+    }
+
+    reloadAllRemote();
+
+    syncTableToolbarLabels(tableIsShown());
+  }
+
+  /** @param {any[]} rows */
+  function filterIcmpByKind(rows, kind) {
+    var k = kind || "generic";
+    var arr = rows || [];
+    return arr.filter(function (row) {
+      var ik = (row.icon_kind || "generic").toString().toLowerCase();
+      return ik === k.toLowerCase();
+    });
+  }
+
+  /** ICMP da categoria actual no âmbito Local vs Online. */
+  function icmpRowsForCategoryView(kind) {
+    var scopeRows = categoryHubScope === "online" ? icmpOnline : icmpLocal;
+    return filterIcmpByKind(scopeRows, kind);
+  }
+
+  function cameraRowsForCategoryView() {
+    return camerasList.slice();
+  }
+
+  /** @param {any[]} rows */
+  function icmpMonitoredOfflineRowsIn(rows, kind) {
+    return filterIcmpByKind(rows, kind).filter(function (r) {
+      return !!r.monitor_ativo && r.estado === "offline";
+    });
+  }
+
+  function iconStripTitleHint(kindKey) {
+    if (kindKey === HUB_SITE_STRIP_KIND) return "Site";
+    for (var i = 0; i < ICONS.length; i++) {
+      if (ICONS[i].kind === kindKey) return ICONS[i].title;
+    }
+    return kindKey || "tipo";
+  }
+
+  function paintHubStripOfflineAlerts() {
+    paintOneHubStripOfflineAlerts("icon-strip-add", "local");
+    paintOneHubStripOfflineAlerts("icon-strip-online", "online");
+  }
+
+  /** @param {string} stripId */
+  /** @param {'local'|'online'} hubScope */
+  function paintOneHubStripOfflineAlerts(stripId, hubScope) {
+    var strip = document.getElementById(stripId);
+    if (!strip) return;
+    var scopeRows = hubScope === "online" ? icmpOnline : icmpLocal;
+    strip.querySelectorAll(".icon-strip-add-btn").forEach(function (btn) {
+      btn.classList.remove("hub-strip-offline-pulse");
+      var oldB = btn.querySelector(".hub-strip-offbadge");
+      if (oldB) oldB.remove();
+
+      var k = btn.getAttribute("data-kind") || "generic";
+      var baseHint =
+        "Abrir mapa «" +
+        escapeHtml(iconStripTitleHint(k)) +
+        "» neste âmbito + botão Adicionar";
+
+      if (k === "camera") {
+        btn.setAttribute("title", baseHint);
+        return;
+      }
+
+      if (k === HUB_SITE_STRIP_KIND) {
+        baseHint =
+          (hubScope === "online" ? "Site · Internet" : "Site · rede local") +
+          ": mapa e Adicionar (URL HTTP)";
+      }
+
+      var offs = icmpMonitoredOfflineRowsIn(scopeRows, k);
+      if (offs.length === 0) {
+        btn.setAttribute("title", baseHint);
+        return;
+      }
+
+      btn.classList.add("hub-strip-offline-pulse");
+      var tipNames = offs
+        .map(function (r) {
+          return String(r.nome || "—") + " (" + String(r.ip_ou_dns || "") + ")";
+        })
+        .join(" · ");
+      btn.setAttribute(
+        "title",
+        offs.length + " offline: " + tipNames + ". Clica para ver no mapa.",
+      );
+
+      var b = document.createElement("span");
+      b.className = "hub-strip-offbadge";
+      b.textContent = String(offs.length);
+      b.setAttribute("aria-hidden", "true");
+      btn.appendChild(b);
+    });
+  }
+
+  function paintCategoryOfflineAlert() {
+    var el = document.getElementById("category-offline-alert");
+    if (!el) return;
+    if (viewMode !== "category" || !catKind || catKind === "camera") {
+      el.style.display = "none";
+      el.innerHTML = "";
+      return;
+    }
+    var scopeRows = categoryHubScope === "online" ? icmpOnline : icmpLocal;
+    var offs = icmpMonitoredOfflineRowsIn(scopeRows, catKind);
+    if (offs.length === 0) {
+      el.style.display = "none";
+      el.innerHTML = "";
+      return;
+    }
+    el.style.display = "block";
+    var lines = offs
+      .map(function (r) {
+        var dur =
+          r.tempo_actual_estado_segundos != null
+            ? " · há " + escapeHtml(fmtDur(r.tempo_actual_estado_segundos))
+            : "";
+        return (
+          "<li><strong>" +
+          escapeHtml(r.nome || "—") +
+          "</strong> — <code>" +
+          escapeHtml(r.ip_ou_dns || "") +
+          "</code> · <span class=\"dash-badge st-off\">Offline</span>" +
+          dur +
+          "</li>"
+        );
+      })
+      .join("");
+    el.innerHTML =
+      '<div class="category-offline-alert__title"><span class="dash-badge st-off">Alerta ICMP</span> <strong>' +
+      offs.length +
+      '</strong> equipamento(s) <strong>offline</strong>. Corrige o problema; os cartões abaixo piscam em vermelho até voltarem ao ping.</div>' +
+      '<ul class="category-offline-alert__list">' +
+      lines +
+      "</ul>";
+  }
+
+  function glyphFor(kind) {
+    if (kind === "site" || kind === HUB_SITE_STRIP_KIND) return "\uD83D\uDD17";
+    for (var i = 0; i < ICONS.length; i++) {
+      if (ICONS[i].kind === kind) return ICONS[i].g;
+    }
+    return "\u26AB";
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+  function escapeHtmlAttr(s) {
+    return escapeHtml(s);
+  }
+  function normDvrBaseUrl(s) {
+    var t = String(s || "").trim();
+    if (!t) return "";
+    if (!/^https?:\/\//i.test(t)) t = "http://" + t;
+    return t;
+  }
+  /** @param {any} row — linha ICMP da API */
+  function buildBasicAuthPanelUrl(row) {
+    var raw = row && row.url_painel_dvr != null ? String(row.url_painel_dvr).trim() : "";
+    if (!raw) return "";
+    var base = normDvrBaseUrl(raw);
+    try {
+      var u = new URL(base);
+      var user = row.usuario_painel_dvr ? String(row.usuario_painel_dvr).trim() : "";
+      if (user) {
+        var pass = row.senha_painel_dvr != null ? String(row.senha_painel_dvr) : "";
+        u.username = user;
+        u.password = pass;
+      }
+      return u.toString();
+    } catch (err) {
+      return base;
+    }
+  }
+  function nvUsesPywebviewDvrBridge() {
+    return !!(
+      window.pywebview &&
+      window.pywebview.api &&
+      typeof window.pywebview.api.open_dvr_url === "function"
+    );
+  }
+  function closeDvrEmbedded() {
+    var bd = document.getElementById("dvr-embutido-backdrop");
+    var ifr = document.getElementById("dvr-embutido-if");
+    if (ifr) {
+      try {
+        ifr.src = "about:blank";
+      } catch (eIgn) {}
+    }
+    dvrEmbeddedCurrentUrl = "";
+    if (bd) {
+      bd.style.display = "none";
+      bd.setAttribute("aria-hidden", "true");
+    }
+    document.body.style.overflow = "";
+  }
+  /** Abre o DVR dentro da própria janela NeoVision (iframe fullscreen). Retorna false se o DOM não existir. */
+  function tryShowDvrEmbedded(url) {
+    var u = typeof url === "string" ? url.trim() : "";
+    if (!u) return false;
+    var bd = document.getElementById("dvr-embutido-backdrop");
+    var ifr = document.getElementById("dvr-embutido-if");
+    if (!bd || !ifr) return false;
+    dvrEmbeddedCurrentUrl = u;
+    bd.style.display = "flex";
+    bd.style.flexDirection = "column";
+    bd.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    try {
+      ifr.src = "about:blank";
+    } catch (eIgn) {}
+    setTimeout(function () {
+      try {
+        ifr.src = u;
+      } catch (eIgn2) {}
+    }, 30);
+    return true;
+  }
+  function nvOpenDvrPreferred(urlStr) {
+    var u = typeof urlStr === "string" ? urlStr.trim() : "";
+    if (!u) return;
+    if (nvUsesPywebviewDvrBridge()) {
+      window.pywebview.api
+        .open_dvr_url(u)
+        .then(function (ok) {
+          if (ok === true) return;
+          if (!tryShowDvrEmbedded(u)) {
+            window.open(u, "_blank", "noopener,noreferrer");
+          }
+        })
+        .catch(function () {
+          if (!tryShowDvrEmbedded(u)) {
+            window.open(u, "_blank", "noopener,noreferrer");
+          }
+        });
+      return;
+    }
+    if (tryShowDvrEmbedded(u)) return;
+    window.open(u, "_blank", "noopener,noreferrer");
+  }
+  function nvOpenDvrSecondWindowOnly(urlStr) {
+    var u = typeof urlStr === "string" ? urlStr.trim() : "";
+    if (!u) return;
+    if (nvUsesPywebviewDvrBridge()) {
+      window.pywebview.api.open_dvr_url(u).catch(function () {
+        window.open(u, "_blank", "noopener,noreferrer");
+      });
+    } else {
+      window.open(u, "_blank", "noopener,noreferrer");
+    }
+  }
+  /** Clica no azulejo «Abrir DVR» · não abre browser externo: embutido ou segunda WebView. */
+  function nvHandleDvrLinkClick(ev, anchor) {
+    if (!anchor || !anchor.href) return true;
+    if (typeof ev.preventDefault === "function") ev.preventDefault();
+    if (typeof ev.stopPropagation === "function") ev.stopPropagation();
+    nvOpenDvrPreferred(anchor.href);
+    return false;
+  }
+  function nvOpenDvrPanelBtn(urlStr) {
+    nvOpenDvrPreferred(urlStr);
+  }
+  function fmtDur(sec) {
+    if (sec == null || !isFinite(sec) || sec < 0) return "—";
+    var s = Math.floor(Number(sec));
+    var dd = Math.floor(s / 86400);
+    s %= 86400;
+    var hh = Math.floor(s / 3600);
+    s %= 3600;
+    var mm = Math.floor(s / 60);
+    var ss = s % 60;
+    var parts = [];
+    if (dd > 0) parts.push(dd + "d");
+    if (hh > 0) parts.push(hh + "h");
+    if (mm > 0 || parts.length) parts.push(mm + "m");
+    parts.push(ss + "s");
+    return parts.join(" ");
+  }
+  function estadoBadge(est) {
+    if (est === "online") return '<span class="dash-badge st-on">Online</span>';
+    if (est === "offline") return '<span class="dash-badge st-off">Offline</span>';
+    if (est === "sem_dados") return '<span class="dash-badge st-q">A verificar</span>';
+    return '<span class="dash-badge st-idle">Sem dados</span>';
+  }
+  function estadoLabel(est) {
+    if (est === "online") return "Online";
+    if (est === "offline") return "Offline";
+    if (est === "sem_dados") return "A verificar (aguarda primeiro ping)";
+    return "—";
+  }
+
+  function setModalIconKind(k) {
+    var hid = document.getElementById("modal-eq-icon-kind");
+    if (hid) hid.value = k || "generic";
+    document.querySelectorAll("#modal-icon-picker .icon-pick").forEach(function (el) {
+      el.classList.toggle(
+        "is-active",
+        el.getAttribute("data-kind") === (hid && hid.value)
+      );
+    });
+  }
+
+  function buildModalIconPicker() {
+    var pc = document.getElementById("modal-icon-picker");
+    if (!pc) return;
+    pc.innerHTML = ICONS.map(function (it) {
+      return (
+        '<button type="button" class="icon-pick" data-kind="' +
+        escapeHtml(it.kind) +
+        '"><span class="g">' +
+        escapeHtml(it.g) +
+        "</span>" +
+        escapeHtml(it.title) +
+        "</button>"
+      );
+    }).join("");
+    pc.querySelectorAll(".icon-pick").forEach(function (b) {
+      b.addEventListener("click", function () {
+        setModalIconKind(b.getAttribute("data-kind"));
+      });
+    });
+    setModalIconKind(document.getElementById("modal-eq-icon-kind").value || "generic");
+  }
+
+  function buildIconStripAdd() {
+    var pc = document.getElementById("icon-strip-add");
+    if (!pc) return;
+    pc.innerHTML = hubStripIconEntries()
+      .map(function (it) {
+        var hintTitle =
+          it.kind === HUB_SITE_STRIP_KIND
+            ? "Site · rede local: mapa + Adicionar (HTTP)"
+            : "Mapa «" + escapeHtml(it.title) + "» · rede local + Adicionar";
+        return (
+          '<button type="button" class="icon-pick icon-strip-add-btn" title="' +
+          hintTitle +
+          '" data-kind="' +
+          escapeHtml(it.kind) +
+          '"><span class="g">' +
+          escapeHtml(it.g) +
+          "</span>" +
+          escapeHtml(it.title) +
+          "</button>"
+        );
+      })
+      .join("");
+    pc.querySelectorAll(".icon-strip-add-btn").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var k = b.getAttribute("data-kind") || "generic";
+        if (k === HUB_SITE_STRIP_KIND) {
+          enterCategory(HUB_SITE_STRIP_KIND, "local");
+          return;
+        }
+        enterCategory(k, "local");
+      });
+    });
+  }
+
+  function buildIconStripOnline() {
+    var pc = document.getElementById("icon-strip-online");
+    if (!pc) return;
+    pc.innerHTML = hubStripIconEntries()
+      .map(function (it) {
+        var hintTitle =
+          it.kind === HUB_SITE_STRIP_KIND
+            ? "Site · Internet: mapa + Adicionar (HTTP)"
+            : "Mapa «" + escapeHtml(it.title) + "» · Internet + Adicionar";
+        return (
+          '<button type="button" class="icon-pick icon-strip-add-btn" title="' +
+          hintTitle +
+          '" data-kind="' +
+          escapeHtml(it.kind) +
+          '"><span class="g">' +
+          escapeHtml(it.g) +
+          "</span>" +
+          escapeHtml(it.title) +
+          "</button>"
+        );
+      })
+      .join("");
+    pc.querySelectorAll(".icon-strip-add-btn").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var k = b.getAttribute("data-kind") || "generic";
+        if (k === HUB_SITE_STRIP_KIND) {
+          enterCategory(HUB_SITE_STRIP_KIND, "online");
+          return;
+        }
+        enterCategory(k, "online");
+      });
+    });
+  }
+
+  /** Form equipamento: edição usa sempre todos os campos visíveis. */
+  var modalEditMode = false;
+
+  function applyEquipmentModalLayout() {
+    var rowHttp = document.getElementById("modal-eq-row-http-monitor");
+    var rowInterval = document.getElementById("modal-eq-row-interval");
+    var ipInput = document.getElementById("modal-eq-ip");
+    var ipRow = ipInput ? ipInput.closest(".field") : null;
+    var httpLabel = document.getElementById("modal-eq-http-monitor-label");
+    var httpHint = document.getElementById("modal-eq-http-monitor-hint");
+    var dvrWrap = document.getElementById("modal-eq-dvr-fieldset-wrap");
+    if (!rowHttp || !rowInterval || !ipRow || !ipInput) return;
+    if (modalEditMode) {
+      rowHttp.style.display = "block";
+      rowInterval.style.display = "block";
+      ipRow.style.display = "block";
+      ipInput.setAttribute("required", "required");
+      if (httpLabel) httpLabel.textContent = "URL para monitor HTTP (opcional)";
+      if (httpHint) httpHint.style.display = "block";
+      if (dvrWrap) dvrWrap.style.display = "block";
+      return;
+    }
+    if (equipmentModalOnlineMode) {
+      rowHttp.style.display = "block";
+      rowInterval.style.display = "block";
+      ipRow.style.display = "none";
+      ipInput.removeAttribute("required");
+      if (httpLabel) httpLabel.textContent = "URL HTTP(S) (obrigatório)";
+      if (httpHint) httpHint.style.display = "none";
+      if (dvrWrap) dvrWrap.style.display = "none";
+    } else {
+      rowHttp.style.display = "none";
+      rowInterval.style.display = "block";
+      ipRow.style.display = "block";
+      ipInput.setAttribute("required", "required");
+      document.getElementById("modal-eq-interval").value = "60";
+      if (httpLabel) httpLabel.textContent = "URL para monitor HTTP (opcional)";
+      if (httpHint) httpHint.style.display = "block";
+      if (dvrWrap) dvrWrap.style.display = "block";
+      document.getElementById("modal-eq-http-monitor").value = "";
+    }
+  }
+
+  function openModalAdd(kind, hubScopeOverride) {
+    resetModalForm();
+    modalEditMode = false;
+    var hubSc =
+      hubScopeOverride != null
+        ? hubScopeOverride
+        : viewMode === "category"
+          ? categoryHubScope
+          : "local";
+    equipmentModalOnlineMode =
+      hubSc === "online" && kind !== HUB_SITE_STRIP_KIND && kind !== "camera";
+    setModalIconKind(kind || "generic");
+    document.getElementById("modal-add-title").textContent = equipmentModalOnlineMode
+      ? "Novo equipamento (Internet)"
+      : "Novo equipamento ICMP";
+    applyEquipmentModalLayout();
+    document.getElementById("backdrop-add").classList.add("show");
+    setTimeout(function () {
+      document.getElementById("modal-eq-name").focus();
+    }, 60);
+  }
+
+  function closeModalAdd() {
+    document.getElementById("backdrop-add").classList.remove("show");
+  }
+
+  function openModalEdit(row) {
+    if (!row) return;
+    resetModalForm(false);
+    modalEditMode = true;
+    equipmentModalOnlineMode = false;
+    document.getElementById("modal-add-title").textContent = "Editar equipamento";
+    document.getElementById("modal-editing-id").value = row.id;
+    document.getElementById("modal-eq-name").value = row.nome || "";
+    document.getElementById("modal-eq-ip").value = row.ip_ou_dns || "";
+    var hmEl = document.getElementById("modal-eq-http-monitor");
+    if (hmEl) hmEl.value = row.http_monitor_url ? String(row.http_monitor_url) : "";
+    document.getElementById("modal-eq-interval").value = String(row.intervalo_segundos || 60);
+    document.getElementById("modal-eq-enabled").checked = !!row.monitor_ativo;
+    setModalIconKind(row.icon_kind || "generic");
+    document.getElementById("modal-eq-save-btn").textContent = "Actualizar";
+    applyEquipmentModalLayout();
+    document.getElementById("backdrop-add").classList.add("show");
+    var dUrl = document.getElementById("modal-eq-dvr-url");
+    if (dUrl) dUrl.value = row.url_painel_dvr ? String(row.url_painel_dvr) : "";
+    var dUs = document.getElementById("modal-eq-dvr-user");
+    if (dUs) dUs.value = row.usuario_painel_dvr ? String(row.usuario_painel_dvr) : "";
+    var dPw = document.getElementById("modal-eq-dvr-pass");
+    if (dPw) dPw.value = "";
+    var cl = document.getElementById("modal-eq-dvr-clear-senha");
+    if (cl) cl.checked = false;
+    setTimeout(function () {
+      document.getElementById("modal-eq-name").focus();
+    }, 60);
+  }
+
+  function closeCameraModal() {
+    document.getElementById("backdrop-camera-add").classList.remove("show");
+    var fb = document.getElementById("modal-cam-form-msg");
+    if (fb) {
+      fb.style.display = "none";
+      fb.textContent = "";
+    }
+    document.getElementById("modal-cam-form").reset();
+  }
+
+  function openCameraAddModal() {
+    closeCameraModal();
+    document.getElementById("modal-cam-form-msg").style.display = "none";
+    document.getElementById("backdrop-camera-add").classList.add("show");
+    setTimeout(function () {
+      document.getElementById("modal-cam-name").focus();
+    }, 60);
+  }
+
+  var deletePendingId = null;
+  /** @type {'icmp'|'cam'} */
+  var deletePendingKind = "icmp";
+
+  function openConfirmDelete(id, kind) {
+    deletePendingId = id;
+    deletePendingKind = kind === "cam" ? "cam" : "icmp";
+    var body = document.getElementById("confirm-del-body");
+    if (body) {
+      if (deletePendingKind === "cam") {
+        body.innerHTML =
+          'Tem a certeza que deseja <strong>eliminar</strong> esta câmara? Esta acção não pode ser anulada.';
+      } else {
+        body.innerHTML =
+          'Tem a certeza que deseja <strong>eliminar</strong> este equipamento da monitorização? Esta acção não pode ser anulada.';
+      }
+    }
+    document.getElementById("backdrop-confirm-del").classList.add("show");
+  }
+
+  async function executeConfirmedDelete() {
+    var id = deletePendingId;
+    var kind = deletePendingKind;
+    if (!id) return;
+    try {
+      if (kind === "cam") {
+        var resCam = await fetch("/cameras/" + encodeURIComponent(id), { method: "DELETE" });
+        if (!resCam.ok && resCam.status !== 204) {
+          var tx = await resCam.text().catch(function () { return ""; });
+          throw new Error(tx || "HTTP " + resCam.status);
+        }
+        document.getElementById("backdrop-edit-cam").classList.remove("show");
+      } else {
+        var res = await fetch("/network-equipment/" + encodeURIComponent(id), {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        if (document.getElementById("modal-editing-id").value === id) resetModalForm();
+        document.getElementById("backdrop-edit").classList.remove("show");
+      }
+      document.getElementById("backdrop-confirm-del").classList.remove("show");
+      deletePendingId = null;
+      deletePendingKind = "icmp";
+      await reloadAllRemote();
+    } catch (e) {
+      alert(e.message || String(e));
+    }
+  }
+
+  function attachIcmpBoardHandlers(board) {
+    var clickDelay = null;
+    board.querySelectorAll('.eq-tile[data-tile-src="icmp"]').forEach(function (tile) {
+      tile.addEventListener("click", function () {
+        if (clickDelay) clearTimeout(clickDelay);
+        var id = tile.getAttribute("data-row-id");
+        clickDelay = setTimeout(function () {
+          clickDelay = null;
+          openIcmpDetailById(id);
+        }, 300);
+      });
+      tile.addEventListener("dblclick", function (ev) {
+        ev.preventDefault();
+        if (clickDelay) {
+          clearTimeout(clickDelay);
+          clickDelay = null;
+        }
+        openQuickEdit(tile.getAttribute("data-row-id"));
+      });
+    });
+    board.querySelectorAll('.eq-tile[data-tile-src="cam"]').forEach(function (tile) {
+      tile.addEventListener("click", function () {
+        if (clickDelay) clearTimeout(clickDelay);
+        var id = tile.getAttribute("data-row-id");
+        clickDelay = setTimeout(function () {
+          clickDelay = null;
+          openCameraDetailById(id);
+        }, 300);
+      });
+      tile.addEventListener("dblclick", function (ev) {
+        ev.preventDefault();
+        if (clickDelay) {
+          clearTimeout(clickDelay);
+          clickDelay = null;
+        }
+        openQuickEditCam(tile.getAttribute("data-row-id"));
+      });
+    });
+  }
+
+  function renderBoardIcmp(list) {
+    var board = document.getElementById("eq-board");
+    var empty = document.getElementById("eq-board-empty");
+    if (!board) return;
+    if (!Array.isArray(list) || !list.length) {
+      board.innerHTML = "";
+      empty.style.display = "block";
+      return;
+    }
+    empty.style.display = "none";
+    board.innerHTML = list.map(function (row) {
+      var est = row.estado;
+      var clazz = [];
+      if (!row.monitor_ativo) clazz.push("dimmed");
+      if (est === "online") clazz.push("eq-tile--online");
+      else if (est === "offline") clazz.push("eq-tile--offline");
+      else clazz.push("eq-tile--pending");
+      if (!!row.monitor_ativo && est === "offline") clazz.push("eq-tile-offline-blink");
+      var mk = clazz.join(" ");
+      var g = glyphFor(row.icon_kind || "generic");
+      var nip = escapeHtml(row.ip_ou_dns || "");
+      var nname = escapeHtml(row.nome || "—");
+      var dvrHref = buildBasicAuthPanelUrl(row);
+      var dvrLn = "";
+      if (dvrHref) {
+        dvrLn =
+          '<a class="eq-tile-ip-chip" style="margin-top:0.28rem;text-decoration:none;display:block;line-height:1.35" href="' +
+          escapeHtmlAttr(dvrHref) +
+          '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();return nvHandleDvrLinkClick(event,this);" title="Abrir DVR dentro da NeoVision">Abrir DVR</a>';
+      }
+      return (
+        '<div class="eq-tile ' +
+        mk.trim() +
+        '" data-row-id="' +
+        escapeHtml(row.id) +
+        '" data-tile-src="icmp" tabindex="0" title="Um clique: detalhes · Duplo clique: editar rápido">' +
+        '<div class="eq-tile-glyph-wrap"><div class="eq-tile-glyph" aria-hidden="true">' +
+        escapeHtml(g) +
+        '</div></div>' +
+        '<div class="eq-tile-name">' +
+        nname +
+        '</div>' +
+        '<div class="eq-tile-ip-chip">' +
+        nip +
+        "</div>" +
+        dvrLn +
+        '<div class="eq-tile-pin">' +
+        estadoLabel(est) +
+        "</div>" +
+        "</div>"
+      );
+    }).join("");
+    attachIcmpBoardHandlers(board);
+  }
+
+  function renderBoardCameras(cams) {
+    var board = document.getElementById("eq-board");
+    var empty = document.getElementById("eq-board-empty");
+    if (!board) return;
+    if (!Array.isArray(cams) || !cams.length) {
+      board.innerHTML = "";
+      empty.style.display = "block";
+      return;
+    }
+    empty.style.display = "none";
+    board.innerHTML = cams.map(function (row) {
+      var clazz = [];
+      var pin = "";
+      if (!row.is_enabled) {
+        clazz.push("dimmed", "eq-tile--offline");
+        pin = "Inativa";
+      } else if (row.rtsp_url && String(row.rtsp_url).trim()) {
+        clazz.push("eq-tile--online");
+        pin = "RTSP configurado";
+      } else {
+        clazz.push("eq-tile--pending");
+        pin = "Sem URL RTSP (define em Câmeras)";
+      }
+      var g = glyphFor("camera");
+      var nip = escapeHtml(row.ip_address || "");
+      var nname = escapeHtml(row.name || "—");
+      return (
+        '<div class="eq-tile ' +
+        clazz.join(" ").trim() +
+        '" data-row-id="' +
+        escapeHtml(row.id) +
+        '" data-tile-src="cam" tabindex="0" title="Um clique: detalhes · Duplo clique: editar rápido">' +
+        '<div class="eq-tile-glyph-wrap"><div class="eq-tile-glyph" aria-hidden="true">' +
+        escapeHtml(g) +
+        '</div></div>' +
+        '<div class="eq-tile-name">' +
+        nname +
+        '</div>' +
+        '<div class="eq-tile-ip-chip">' +
+        nip +
+        "</div>" +
+        '<div class="eq-tile-pin">' +
+        escapeHtml(pin) +
+        "</div>" +
+        "</div>"
+      );
+    }).join("");
+    attachIcmpBoardHandlers(board);
+  }
+
+  function openIcmpDetailById(id) {
+    var row = null;
+    var merged = icmpMerged();
+    for (var i = 0; i < merged.length; i++) {
+      if (merged[i].id === id) {
+        row = merged[i];
+        break;
+      }
+    }
+    if (!row) return;
+    document.getElementById("modal-detail-title").textContent = "ICMP · equipamento";
+    var body = document.getElementById("modal-detail-body");
+    var panelUrlFinal = buildBasicAuthPanelUrl(row);
+    body.innerHTML =
+      '<div class="kv">' +
+      estadoBadge(row.estado) +
+      '</div>' +
+      '<div class="kv"><span class="k">Nome</span>' +
+      escapeHtml(row.nome || "—") +
+      "</div>" +
+      '<div class="kv"><span class="k">Endereço</span><code>' +
+      escapeHtml(row.ip_ou_dns || "") +
+      "</code></div>" +
+      '<div class="kv"><span class="k">Estado atual</span>' +
+      estadoLabel(row.estado) +
+      "</div>" +
+      '<div class="kv"><span class="k">Monitor ativo</span>' +
+      (row.monitor_ativo ? "Sim" : "Não") +
+      "</div>" +
+      (row.http_monitor_url && String(row.http_monitor_url).trim()
+        ? '<div class="kv"><span class="k">Monitor HTTP</span><code style="word-break:break-all;font-size:0.82rem">' +
+          escapeHtml(String(row.http_monitor_url).trim()) +
+          '</code></div><div class="kv"><span class="k">Tipo de teste</span>GET HTTP</div>'
+        : '<div class="kv"><span class="k">Tipo de teste</span>Ping ICMP</div>') +
+      '<div class="kv"><span class="k">Intervalo (segundos)</span>' +
+      String(row.intervalo_segundos || "—") +
+      " s</div>" +
+      '<div class="kv"><span class="k">Tempo neste estado</span>' +
+      escapeHtml(fmtDur(row.tempo_actual_estado_segundos)) +
+      "</div>" +
+      '<div class="kv"><span class="k">Total online (acumulado)</span>' +
+      escapeHtml(fmtDur(row.total_online_segundos)) +
+      "</div>" +
+      '<div class="kv"><span class="k">Total offline (acumulado)</span>' +
+      escapeHtml(fmtDur(row.total_offline_segundos)) +
+      "</div>" +
+      '<div class="kv"><span class="k">Último ping (UTC)</span>' +
+      escapeHtml(
+        (row.ultima_verificacao_utc || "—").replace("T", " ").slice(0, 29)
+      ) +
+      "</div>" +
+      (row.url_painel_dvr && String(row.url_painel_dvr).trim()
+        ? '<div class="kv" style="margin-top:0.5rem;"><span class="k">Painel web URL</span><code style="word-break:break-all;">' +
+          escapeHtml(String(row.url_painel_dvr).trim()) +
+          "</code></div>" +
+          (row.usuario_painel_dvr
+            ? '<div class="kv"><span class="k">Usuário (painel web)</span>' +
+              escapeHtml(String(row.usuario_painel_dvr)) +
+              "</div>"
+            : "") +
+          (panelUrlFinal
+            ? '<div style="margin-top:0.75rem;"><div style="display:flex;flex-wrap:wrap;gap:0.45rem;margin-bottom:0.45rem;align-items:center;"><button type="button" class="btn-submit btn-eq-primary" id="detail-btn-dvr-open">Abrir DVR aqui (tela inteira na app)</button><button type="button" class="btn-submit" style="background:#334155;border-color:#1e293b;color:#fff" id="detail-btn-dvr-window">Segunda janela (nesta app)</button></div><span style="font-size:0.78rem;color:var(--muted);display:block;max-width:38rem;line-height:1.45;">Tenta primeiro a janela interna da NeoVision (sem navegador). Login automático com Basic Auth: use só o campo URL, por exemplo <code>http://admin:SENHA@10.100.103.8:8008/</code> (sem preencher usuário e senha abaixo no cadastro).</span></div>'
+            : '<p style="margin:0.55rem 0 0;font-size:0.78rem;color:var(--muted);">Endereço da interface web inválido — corrija no editar.</p>')
+        : "");
+    var dvrBtn = document.getElementById("detail-btn-dvr-open");
+    if (dvrBtn && panelUrlFinal) {
+      dvrBtn.addEventListener("click", function () {
+        nvOpenDvrPreferred(panelUrlFinal);
+      });
+    }
+    var dvrBtnW = document.getElementById("detail-btn-dvr-window");
+    if (dvrBtnW && panelUrlFinal) {
+      dvrBtnW.addEventListener("click", function () {
+        nvOpenDvrSecondWindowOnly(panelUrlFinal);
+      });
+    }
+    document.getElementById("backdrop").classList.add("show");
+  }
+
+  function openCameraDetailById(id) {
+    var row = null;
+    for (var i = 0; i < camerasList.length; i++) {
+      if (camerasList[i].id === id) {
+        row = camerasList[i];
+        break;
+      }
+    }
+    if (!row) return;
+    document.getElementById("modal-detail-title").textContent = "Câmara IP";
+    var hasRtsp = !!(row.rtsp_url && String(row.rtsp_url).trim());
+    var body = document.getElementById("modal-detail-body");
+    body.innerHTML =
+      '<div class="kv">' +
+      (row.is_enabled
+        ? '<span class="dash-badge st-on">Ativa</span>'
+        : '<span class="dash-badge st-off">Inativa</span>') +
+      "</div>" +
+      '<div class="kv"><span class="k">Nome</span>' +
+      escapeHtml(row.name || "—") +
+      "</div>" +
+      '<div class="kv"><span class="k">IP</span><code>' +
+      escapeHtml(row.ip_address || "") +
+      "</code></div>" +
+      '<div class="kv"><span class="k">RTSP</span>' +
+      (hasRtsp ? "<code>Preenchido</code>" : "<em>não configurado</em>") +
+      "</div>" +
+      '<div class="kv"><span class="k">Última vista</span>' +
+      escapeHtml(
+        row.last_seen_utc
+          ? String(row.last_seen_utc).replace("T", " ").slice(0, 29)
+          : "—"
+      ) +
+      "</div>" +
+      (isRedeOnlyApp()
+        ? '<div class="kv" style="margin-top:0.75rem;color:var(--muted);">Ajuste de stream/ONVIF: use a instalação NeoVision completa.</div>'
+        : '<div class="kv" style="margin-top:0.75rem;"><a href="/painel/cameras"><strong>Editar vídeo / ONVIF →</strong></a></div>');
+    document.getElementById("backdrop").classList.add("show");
+  }
+
+  function openQuickEdit(id) {
+    var row = null;
+    var merged = icmpMerged();
+    for (var i = 0; i < merged.length; i++) {
+      if (merged[i].id === id) {
+        row = merged[i];
+        break;
+      }
+    }
+    if (!row) return;
+    document.getElementById("edit-id").value = row.id;
+    document.getElementById("edit-name").value = row.nome || "";
+    document.getElementById("edit-ip").value = row.ip_ou_dns || "";
+    var ri = document.getElementById("edit-row-interval");
+    var rh = document.getElementById("edit-row-http-url");
+    var showEx =
+      (row.monitor_hub_scope || "local") === "online" ||
+      !!(row.http_monitor_url && String(row.http_monitor_url).trim());
+    if (ri) ri.style.display = showEx ? "block" : "none";
+    if (rh) rh.style.display = showEx ? "block" : "none";
+    var intEl = document.getElementById("edit-interval");
+    if (intEl) intEl.value = String(row.intervalo_segundos || 60);
+    var huEl = document.getElementById("edit-http-url");
+    if (huEl) huEl.value = row.http_monitor_url ? String(row.http_monitor_url) : "";
+    document.getElementById("backdrop-edit").classList.add("show");
+  }
+
+  async function openQuickEditCam(id) {
+    var row = null;
+    for (var i = 0; i < camerasList.length; i++) {
+      if (camerasList[i].id === id) {
+        row = camerasList[i];
+        break;
+      }
+    }
+    if (!row) {
+      try {
+        var res = await fetch("/cameras/" + encodeURIComponent(id), {
+          headers: { Accept: "application/json" },
+        });
+        var j = await res.json().catch(function () { return null; });
+        if (res.ok && j && j.id) row = j;
+      } catch (e) {}
+    }
+    if (!row) {
+      alert("Não foi possível carregar esta câmara.");
+      return;
+    }
+    document.getElementById("edit-cam-id").value = row.id;
+    document.getElementById("edit-cam-name").value = row.name || "";
+    document.getElementById("edit-cam-ip").value = row.ip_address || "";
+    document.getElementById("backdrop-edit-cam").classList.add("show");
+  }
+
+  function repaintBoardArea() {
+    var empty = document.getElementById("eq-board-empty");
+    if (!empty) return;
+
+    if (viewMode !== "category" || !catKind) {
+      var bd = document.getElementById("eq-board");
+      if (bd) bd.innerHTML = "";
+      empty.textContent =
+        "Escolha um tipo nos ícones: grelha «rede local» ou «Internet / remoto» — mapas e listas são independentes.";
+      empty.style.display = "block";
+      paintCategoryOfflineAlert();
+      return;
+    }
+
+    if (catKind === "camera") {
+      empty.textContent = "Ainda não há câmaras neste âmbito — usa Adicionar (nome + IP).";
+      renderBoardCameras(cameraRowsForCategoryView());
+      paintCategoryOfflineAlert();
+      return;
+    }
+
+    if (catKind === HUB_SITE_STRIP_KIND) {
+      empty.textContent =
+        "Ainda não há sites HTTP neste âmbito — usa Adicionar (nome + URL + intervalo).";
+    } else {
+      empty.textContent =
+        "Ainda não há entradas ICMP deste tipo neste âmbito — usa Adicionar.";
+    }
+    renderBoardIcmp(icmpRowsForCategoryView(catKind));
+    paintCategoryOfflineAlert();
+  }
+
+  function tableIsShown() {
+    var sec = document.getElementById("table-section");
+    return !!(sec && sec.style.display !== "none");
+  }
+
+  function icmpTableCols() {
+    return 8;
+  }
+
+  /** @returns {HTMLElement|null} */
+  function setIcmpHead() {
+    var head = document.getElementById("eq-table-head");
+    if (!head) return null;
+    head.innerHTML =
+      "<tr><th>Nome</th><th>Alvo</th><th>Estado</th>" +
+      "<th>Neste estado / tempo</th><th>Total online</th><th>Total offline</th><th>Último ping</th><th></th></tr>";
+    return head;
+  }
+
+  function setCameraHead() {
+    var head = document.getElementById("eq-table-head");
+    if (!head) return null;
+    head.innerHTML =
+      "<tr><th>Nome</th><th>IP</th><th>RTSP</th><th>Ativa</th><th>Última vista</th><th></th></tr>";
+    return head;
+  }
+
+  function syncTableToolbarLabels(showing) {
+    var lbl = showing ? "Ocultar lista" : "Lista em tabela";
+    var bh = document.getElementById("btn-toggle-table");
+    var bc = document.getElementById("btn-category-table");
+    if (bh) bh.textContent = lbl;
+    if (bc) bc.textContent = lbl;
+  }
+
+  function syncTableContents() {
+    var sec = document.getElementById("table-section");
+    var tbody = document.getElementById("eq-tbody");
+    var tTitle = document.getElementById("table-section-title");
+    if (!sec || !tbody) return;
+
+    var cameraMode =
+      tableIsShown() &&
+      viewMode === "category" &&
+      catKind === "camera";
+
+    if (!tableIsShown()) return;
+
+    if (cameraMode) {
+      setCameraHead();
+      tTitle.textContent = "Lista de câmeras IP";
+      var camQ =
+        viewMode === "category"
+          ? "?hub_scope=" + encodeURIComponent(categoryHubScope)
+          : "";
+      fetch("/cameras" + camQ, { headers: { Accept: "application/json" } })
+        .then(function (res) {
+          return res.json().then(function (j) {
+            return { res: res, j: j };
+          });
+        })
+        .catch(function () {
+          return { res: { ok: false }, j: {} };
+        })
+        .then(function (bundle) {
+          if (!bundle.res.ok) {
+            tbody.innerHTML =
+              '<tr><td colspan="6" class="field-hint">Não foi possível carregar câmaras.</td></tr>';
+            return;
+          }
+          var jc = bundle.j;
+          if (!Array.isArray(jc) || !jc.length) {
+            tbody.innerHTML =
+              '<tr><td colspan="6" class="field-hint">Sem câmaras neste âmbito — Adicionar acima.</td></tr>';
+            return;
+          }
+          tbody.innerHTML = jc
+            .map(function (row) {
+              var hasRtsp = !!(row.rtsp_url && String(row.rtsp_url).trim());
+              return (
+                "<tr>" +
+                "<td><strong>" +
+                escapeHtml(row.name || "—") +
+                "</strong></td>" +
+                "<td><code style=\"font-size:0.85em\">" +
+                escapeHtml(row.ip_address || "") +
+                "</code></td>" +
+                "<td>" +
+                (hasRtsp ? "Sim" : "—") +
+                "</td>" +
+                "<td>" +
+                (row.is_enabled ? "Sim" : "Não") +
+                "</td>" +
+                "<td style=\"font-size:0.8rem;color:#64748b\">" +
+                escapeHtml((row.last_seen_utc || "—").replace("T", " ").slice(0, 24)) +
+                "</td>" +
+                "<td class=\"eq-actions\">" +
+                  '<button type="button" class="btn-submit" style="font-size:0.8rem;padding:0.2rem 0.5rem" data-act="edit-cam" data-id="' +
+                  escapeHtml(row.id) +
+                  '">Editar</button> ' +
+                  '<button type="button" class="btn-submit" style="font-size:0.8rem;padding:0.2rem 0.5rem;background:#991b1b;border-color:#7f1d1d;color:#fff" data-act="del-cam" data-id="' +
+                  escapeHtml(row.id) +
+                  '">Apagar</button>' +
+                  (!isRedeOnlyApp()
+                    ? ' <a class="btn-submit" style="font-size:0.8rem;padding:0.2rem 0.5rem;display:inline-block;text-decoration:none;margin-left:0.25rem" href="/painel/cameras">RTSP/ONVIF</a>'
+                    : "") +
+                  "</td>" +
+                "</tr>"
+              );
+            })
+            .join("");
+          tbody.querySelectorAll("button[data-act]").forEach(function (btn) {
+            btn.addEventListener("click", onRowAction);
+          });
+        });
+      return;
+    }
+
+    setIcmpHead();
+    tTitle.textContent = "Lista e estado atual (ICMP)";
+    var filterAll = !(viewMode === "category");
+    var rows = filterAll ? icmpMerged().slice() : icmpRowsForCategoryView(catKind);
+
+    tbody.innerHTML = "";
+    try {
+      if (!Array.isArray(rows) || !rows.length) {
+        tbody.innerHTML =
+          '<tr><td colspan="' +
+          icmpTableCols() +
+          '" class="field-hint">' +
+          (viewMode === "category" && catKind && catKind !== "camera"
+            ? "Nenhuma linha nesta categoria e âmbito."
+            : "Nenhuma linha ICMP neste filtro.") +
+          "</td></tr>";
+        return;
+      }
+      tbody.innerHTML = rows.map(function (row) {
+        return (
+          "<tr>" +
+          "<td><strong>" +
+          escapeHtml(row.nome || "—") +
+          "</strong></td>" +
+          "<td><code style=\"font-size:0.85em\">" +
+          escapeHtml(row.ip_ou_dns || "") +
+          "</code></td>" +
+          "<td>" +
+          estadoBadge(row.estado) +
+          "</td>" +
+          "<td>" +
+          fmtDur(row.tempo_actual_estado_segundos) +
+          "</td>" +
+          "<td>" +
+          fmtDur(row.total_online_segundos) +
+          "</td>" +
+          "<td>" +
+          fmtDur(row.total_offline_segundos) +
+          "</td>" +
+          "<td style=\"font-size:0.8rem;color:#64748b\">" +
+          escapeHtml((row.ultima_verificacao_utc || "—").replace("T", " ").slice(0, 24)) +
+          "</td>" +
+          '<td class="eq-actions">' +
+          '<button type="button" class="btn-submit" style="font-size:0.8rem;padding:0.2rem 0.5rem" data-act="edit" data-id="' +
+          escapeHtml(row.id) +
+          '">Editar</button> ' +
+          '<button type="button" class="btn-submit" style="font-size:0.8rem;padding:0.2rem 0.5rem;background:#991b1b;border-color:#7f1d1d;color:#fff" data-act="del" data-id="' +
+          escapeHtml(row.id) +
+          '">Apagar</button>' +
+          "</td>" +
+          "</tr>"
+        );
+      }).join("");
+      tbody.querySelectorAll("button[data-act]").forEach(function (btn) {
+        btn.addEventListener("click", onRowAction);
+      });
+    } catch (e) {
+      tbody.innerHTML =
+        '<tr><td colspan="' +
+        icmpTableCols() +
+        '" class="field-hint">' +
+        escapeHtml(e.message || String(e)) +
+        "</td></tr>";
+    }
+  }
+
+  async function fetchCameras(hubScope) {
+    try {
+      var q = hubScope ? "?hub_scope=" + encodeURIComponent(hubScope) : "";
+      var res = await fetch("/cameras" + q, { headers: { Accept: "application/json" } });
+      var j = await res.json().catch(function () {
+        return [];
+      });
+      if (!res.ok) {
+        camerasList = [];
+        return { ok: false, detail: typeof j.detail === "string" ? j.detail : res.statusText };
+      }
+      camerasList = Array.isArray(j) ? j.slice() : [];
+      return { ok: true };
+    } catch (e) {
+      camerasList = [];
+      return { ok: false, detail: String(e.message || e) };
+    }
+  }
+
+  /** @returns {Promise<void>} */
+  async function reloadAllRemote() {
+    var tbody = document.getElementById("eq-tbody");
+    try {
+      var resL = await fetch("/network-equipment?hub_scope=local", {
+        headers: { Accept: "application/json" },
+      });
+      var resO = await fetch("/network-equipment?hub_scope=online", {
+        headers: { Accept: "application/json" },
+      });
+      var jL = await resL.json().catch(function () {
+        return [];
+      });
+      var jO = await resO.json().catch(function () {
+        return [];
+      });
+      if (!resL.ok && !resO.ok) {
+        icmpLocal = [];
+        icmpOnline = [];
+        if (tbody && tableIsShown()) {
+          tbody.innerHTML =
+            '<tr><td colspan="8" class="field-hint">' +
+            escapeHtml(
+              typeof jL.detail === "string"
+                ? jL.detail
+                : jL.detail
+                  ? JSON.stringify(jL.detail).slice(0, 120)
+                  : resL.statusText
+            ) +
+            "</td></tr>";
+        }
+        repaintBoardArea();
+        syncTableContents();
+        paintHubStripOfflineAlerts();
+        return;
+      }
+      icmpLocal = resL.ok && Array.isArray(jL) ? jL : [];
+      icmpOnline = resO.ok && Array.isArray(jO) ? jO : [];
+
+      if (viewMode === "category" && catKind === "camera") {
+        await fetchCameras(categoryHubScope);
+      }
+    } catch (e) {
+      icmpLocal = [];
+      icmpOnline = [];
+      if (tbody && tableIsShown()) {
+        tbody.innerHTML =
+          '<tr><td colspan="8" class="field-hint">' + escapeHtml(String(e.message || e)) + "</td></tr>";
+      }
+    }
+    repaintBoardArea();
+    syncTableContents();
+    paintHubStripOfflineAlerts();
+  }
+
+  async function loadOne(id) {
+    try {
+      var merged = icmpMerged();
+      for (var i = 0; i < merged.length; i++) {
+        if (merged[i].id === id) return merged[i];
+      }
+      var res = await fetch("/network-equipment", { headers: { Accept: "application/json" } });
+      var list = await res.json().catch(function () {
+        return [];
+      });
+      if (!res.ok || !Array.isArray(list)) return null;
+      for (var j = 0; j < list.length; j++) {
+        if (list[j].id === id) return list[j];
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function onRowAction(ev) {
+    var btn = ev.currentTarget;
+    var id = btn.getAttribute("data-id");
+    var act = btn.getAttribute("data-act");
+    if (!id) return;
+    if (act === "del") {
+      openConfirmDelete(id, "icmp");
+      return;
+    }
+    if (act === "edit-cam") {
+      openQuickEditCam(id);
+      return;
+    }
+    if (act === "del-cam") {
+      openConfirmDelete(id, "cam");
+      return;
+    }
+    if (act === "edit") {
+      var row = await loadOne(id);
+      if (!row) return;
+      openModalEdit(row);
+    }
+  }
+
+  /** @param {boolean} [clearMsgs] */
+  function resetModalForm(clearMsgs) {
+    if (clearMsgs !== false) {
+      var fb = document.getElementById("modal-eq-form-msg");
+      fb.style.display = "none";
+      fb.textContent = "";
+      fb.className = "feedback";
+    }
+    modalEditMode = false;
+    equipmentModalOnlineMode = false;
+    document.getElementById("modal-eq-form").reset();
+    document.getElementById("modal-eq-interval").value = "60";
+    document.getElementById("modal-eq-enabled").checked = true;
+    document.getElementById("modal-editing-id").value = "";
+    document.getElementById("modal-eq-icon-kind").value = "generic";
+    setModalIconKind("generic");
+    document.getElementById("modal-eq-save-btn").textContent = "Guardar";
+    var dUrl = document.getElementById("modal-eq-dvr-url");
+    if (dUrl) dUrl.value = "";
+    var dUs = document.getElementById("modal-eq-dvr-user");
+    if (dUs) dUs.value = "";
+    var dPw = document.getElementById("modal-eq-dvr-pass");
+    if (dPw) dPw.value = "";
+    var cl = document.getElementById("modal-eq-dvr-clear-senha");
+    if (cl) cl.checked = false;
+    var hm0 = document.getElementById("modal-eq-http-monitor");
+    if (hm0) hm0.value = "";
+  }
+
+  document.getElementById("modal-eq-form").addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    var msg = document.getElementById("modal-eq-form-msg");
+    var nama = document.getElementById("modal-eq-name").value.trim();
+    var hubSc = viewMode === "category" ? categoryHubScope : "local";
+    var eid = document.getElementById("modal-editing-id").value.trim();
+    var ipa = document.getElementById("modal-eq-ip").value.trim();
+    var hmEl = document.getElementById("modal-eq-http-monitor");
+    var httpM = hmEl ? hmEl.value.trim() : "";
+    if (equipmentModalOnlineMode && !eid) {
+      var fullU = normalizeUserHttpUrl(httpM);
+      var host0 = hostFromHttpUrl(fullU);
+      if (!host0 || !fullU) {
+        msg.style.display = "block";
+        msg.className = "feedback bad";
+        msg.textContent = "Indique uma URL HTTP(S) válida.";
+        return;
+      }
+      ipa = host0;
+      httpM = fullU;
+    }
+    var interval = parseInt(document.getElementById("modal-eq-interval").value, 10);
+    if (!Number.isFinite(interval) || interval < 10) interval = 60;
+    var ena = document.getElementById("modal-eq-enabled").checked;
+    var iconKind = document.getElementById("modal-eq-icon-kind").value || "generic";
+    var payload = {
+      nome: nama,
+      ip_address: ipa,
+      poll_interval_seconds: interval,
+      is_enabled: ena,
+      icon_kind: iconKind,
+    };
+    payload.http_monitor_url = httpM || null;
+    if (!eid) payload.monitor_hub_scope = hubSc;
+    var dvUrl = (document.getElementById("modal-eq-dvr-url") || { value: "" }).value.trim();
+    var dvUser = (document.getElementById("modal-eq-dvr-user") || { value: "" }).value.trim();
+    var dvPass = (document.getElementById("modal-eq-dvr-pass") || { value: "" }).value;
+    var clr = document.getElementById("modal-eq-dvr-clear-senha");
+    var clrPw = !!(clr && clr.checked);
+    if (eid) {
+      payload.url_painel_dvr = dvUrl;
+      payload.usuario_painel_dvr = dvUser;
+      if (dvPass) payload.senha_painel_dvr = dvPass;
+      else if (clrPw) payload.senha_painel_dvr = "";
+    } else if (dvUrl || dvUser || dvPass) {
+      payload.url_painel_dvr = dvUrl;
+      payload.usuario_painel_dvr = dvUser;
+      if (dvPass) payload.senha_painel_dvr = dvPass;
+    }
+    try {
+      var url = "/network-equipment";
+      var method = "POST";
+      if (eid) {
+        url = "/network-equipment/" + encodeURIComponent(eid);
+        method = "PUT";
+      }
+      var res = await fetch(url, {
+        method: method,
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      var data = await res.json().catch(function () {
+        return null;
+      });
+      if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);
+      msg.style.display = "block";
+      msg.className = "feedback ok";
+      msg.textContent =
+        method === "PUT" ? "Registro atualizado." : "Equipamento adicionado.";
+      closeModalAdd();
+      resetModalForm();
+      await reloadAllRemote();
+    } catch (e) {
+      msg.style.display = "block";
+      msg.className = "feedback bad";
+      msg.textContent = e.message || String(e);
+    }
+  });
+
+  document.getElementById("modal-cam-form").addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    var msg = document.getElementById("modal-cam-form-msg");
+    var nm = document.getElementById("modal-cam-name").value.trim();
+    var ip = document.getElementById("modal-cam-ip").value.trim();
+    var payload = { name: nm || null, ip_address: ip, is_enabled: true };
+    var hp = document.getElementById("modal-cam-http-port").value.trim();
+    if (hp !== "") {
+      var hpn = parseInt(hp, 10);
+      if (isFinite(hpn) && hpn >= 1 && hpn <= 65535) payload.http_port = hpn;
+    } else {
+      payload.http_port = 80;
+    }
+    var fullRtsp = document.getElementById("modal-cam-rtsp-full").value.trim();
+    if (fullRtsp) payload.rtsp_url = fullRtsp;
+    var rtp = document.getElementById("modal-cam-rtsp-port").value.trim();
+    if (rtp !== "") {
+      var rpn = parseInt(rtp, 10);
+      if (isFinite(rpn) && rpn >= 1 && rpn <= 65535) payload.rtsp_tcp_port = rpn;
+    }
+    var pathv = document.getElementById("modal-cam-rtsp-path").value.trim();
+    if (pathv) payload.rtsp_path = pathv;
+    var ru = document.getElementById("modal-cam-rtsp-user").value.trim();
+    var rp = document.getElementById("modal-cam-rtsp-pass").value;
+    if (ru) payload.rtsp_username = ru;
+    if (rp) payload.rtsp_password = rp;
+    payload.monitor_hub_scope = categoryHubScope;
+    try {
+      var res = await fetch("/cameras", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      var data = await res.json().catch(function () {
+        return null;
+      });
+      if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);
+      msg.style.display = "block";
+      msg.className = "feedback ok";
+      msg.textContent = "Câmara registada.";
+      closeCameraModal();
+      await reloadAllRemote();
+    } catch (e) {
+      msg.style.display = "block";
+      msg.className = "feedback bad";
+      msg.textContent = e.message || String(e);
+    }
+  });
+  document.getElementById("modal-cam-cancel").addEventListener("click", closeCameraModal);
+  document.getElementById("backdrop-camera-add").addEventListener("click", function (ev) {
+    if (ev.target.id === "backdrop-camera-add") closeCameraModal();
+  });
+
+  function openQuedasModal() {
+    var bd = document.getElementById("backdrop-quedas");
+    var body = document.getElementById("quedas-modal-body");
+    body.innerHTML = "A carregar…";
+    bd.classList.add("show");
+    Promise.all([
+      fetch("/network-equipment", { headers: { Accept: "application/json" } }).then(function (r) {
+        return r.json().then(function (j) {
+          return { ok: r.ok, j: j };
+        });
+      }),
+      fetch("/cameras", { headers: { Accept: "application/json" } }).then(function (r) {
+        return r.json().then(function (j) {
+          return { ok: r.ok, j: j };
+        });
+      }),
+    ])
+      .then(function (both) {
+        var eq = both[0];
+        var cams = both[1];
+        var html = "";
+        html += "<h5 style=\"margin:0.5rem 0 0.35rem;font-size:0.9rem\">Equipamentos (ping ICMP)</h5>";
+        html +=
+          "<div style=\"overflow-x:auto;max-height:40vh;overflow-y:auto;border:1px solid var(--line);border-radius:10px\">";
+        html +=
+          "<table class=\"eq-table\" style=\"width:100%;min-width:520px\"><thead><tr><th>Nome</th><th>Alvo</th><th>Quedas</th><th>Estado</th></tr></thead><tbody>";
+        if (eq.ok && Array.isArray(eq.j)) {
+          eq.j.forEach(function (r) {
+            html +=
+              "<tr><td>" +
+              escapeHtml(r.nome || "—") +
+              "</td><td><code>" +
+              escapeHtml(r.ip_ou_dns || "") +
+              "</code></td><td>" +
+              String(r.quedas != null ? r.quedas : 0) +
+              "</td><td>" +
+              escapeHtml(r.estado || "") +
+              "</td></tr>";
+          });
+        } else {
+          html += '<tr><td colspan="4">Não foi possível carregar equipamentos.</td></tr>';
+        }
+        html += "</tbody></table></div>";
+        html += "<h5 style=\"margin:1rem 0 0.35rem;font-size:0.9rem\">Câmeras (stream RTSP)</h5>";
+        html +=
+          "<div style=\"overflow-x:auto;max-height:40vh;overflow-y:auto;border:1px solid var(--line);border-radius:10px\">";
+        html +=
+          "<table class=\"eq-table\" style=\"width:100%;min-width:520px\"><thead><tr><th>Nome</th><th>IP</th><th>Quedas</th><th>RTSP</th></tr></thead><tbody>";
+        if (cams.ok && Array.isArray(cams.j)) {
+          cams.j.forEach(function (c) {
+            var rt = c.rtsp_url || "";
+            html +=
+              "<tr><td>" +
+              escapeHtml(c.name || "—") +
+              "</td><td><code>" +
+              escapeHtml(c.ip_address || "") +
+              "</code></td><td>" +
+              String(c.quedas != null ? c.quedas : 0) +
+              "</td><td style=\"font-size:0.78rem;word-break:break-all\">" +
+              escapeHtml(rt.length > 140 ? rt.slice(0, 140) + "…" : rt || "—") +
+              "</td></tr>";
+          });
+        } else {
+          html += '<tr><td colspan="4">Não foi possível carregar câmeras.</td></tr>';
+        }
+        html += "</tbody></table></div>";
+        body.innerHTML = html;
+      })
+      .catch(function (e) {
+        body.textContent = e.message || String(e);
+      });
+  }
+
+  function openSistemasModal() {
+    document.getElementById("backdrop-sistemas").classList.add("show");
+  }
+  function closeSistemasModal() {
+    document.getElementById("backdrop-sistemas").classList.remove("show");
+  }
+
+  document.getElementById("btn-quedas-log").addEventListener("click", openQuedasModal);
+  document.getElementById("quedas-modal-close").addEventListener("click", function () {
+    document.getElementById("backdrop-quedas").classList.remove("show");
+  });
+  document.getElementById("backdrop-quedas").addEventListener("click", function (ev) {
+    if (ev.target.id === "backdrop-quedas") ev.currentTarget.classList.remove("show");
+  });
+
+  var hubSis = document.getElementById("btn-hub-sistemas");
+  if (hubSis) hubSis.addEventListener("click", openSistemasModal);
+  var catSis = document.getElementById("btn-category-sistemas");
+  if (catSis) catSis.addEventListener("click", openSistemasModal);
+  document.getElementById("sistemas-modal-close").addEventListener("click", closeSistemasModal);
+  document.getElementById("backdrop-sistemas").addEventListener("click", function (ev) {
+    if (ev.target.id === "backdrop-sistemas") closeSistemasModal();
+  });
+  document.getElementById("sistemas-btn-export").addEventListener("click", function () {
+    document.getElementById("btn-backup-export").click();
+  });
+  document.getElementById("sistemas-btn-import").addEventListener("click", function () {
+    document.getElementById("btn-backup-import").click();
+  });
+  document.getElementById("sistemas-btn-quedas").addEventListener("click", function () {
+    closeSistemasModal();
+    openQuedasModal();
+  });
+  var sisPdfBtn = document.getElementById("sistemas-btn-pdf");
+  if (sisPdfBtn) {
+    sisPdfBtn.addEventListener("click", function () {
+      closeSistemasModal();
+      nvHandleDownload("/network-equipment/report/quedas.pdf", "NeoVision-quedas.pdf");
+    });
+  }
+  var sisCsvBtn = document.getElementById("sistemas-btn-csv");
+  if (sisCsvBtn) {
+    sisCsvBtn.addEventListener("click", function () {
+      closeSistemasModal();
+      nvHandleDownload("/network-equipment/report/quedas.csv", "NeoVision-quedas.csv");
+    });
+  }
+
+  /** Centraliza lógica de download via fetch+blob para ser robusto em WebViews. */
+   async function nvHandleDownload(apiUrl, defaultName) {
+     try {
+       var res = await fetch(apiUrl);
+       if (!res.ok) {
+         var tx = await res.text().catch(function () { return ""; });
+         throw new Error(tx || "HTTP " + res.status);
+       }
+       var blob = await res.blob();
+       var cd = res.headers.get("Content-Disposition") || "";
+       var m = /filename="([^"]+)"/i.exec(cd) || /filename=([^;]+)/i.exec(cd);
+       var fn = m ? m[1].trim().replace(/^["']|["']$/g, "") : defaultName;
+       
+       // Ponte para Desktop (pywebview)
+       if (window.pywebview && window.pywebview.api && window.pywebview.api.save_file_dialog) {
+         var reader = new FileReader();
+         reader.onloadend = function() {
+           var base64data = reader.result.split(',')[1];
+           window.pywebview.api.save_file_dialog(fn, base64data);
+         };
+         reader.readAsDataURL(blob);
+         return;
+       }
+
+       var url = URL.createObjectURL(blob);
+       var a = document.createElement("a");
+       a.href = url;
+       a.download = fn;
+       a.style.display = "none";
+       document.body.appendChild(a);
+       a.click();
+       setTimeout(function () {
+         document.body.removeChild(a);
+         URL.revokeObjectURL(url);
+       }, 3000);
+     } catch (e) {
+       alert("Falha no download: " + (e.message || String(e)));
+     }
+   }
+
+  document.getElementById("sistemas-btn-tabela").addEventListener("click", function () {
+    closeSistemasModal();
+    toggleTableBoth();
+  });
+
+  document.getElementById("modal-eq-cancel").addEventListener("click", function () {
+    closeModalAdd();
+    resetModalForm();
+  });
+
+  document.getElementById("backdrop-add").addEventListener("click", function (ev) {
+    if (ev.target.id === "backdrop-add") {
+      closeModalAdd();
+      resetModalForm();
+    }
+  });
+
+  document.getElementById("edit-delete").addEventListener("click", function () {
+    var id = document.getElementById("edit-id").value;
+    if (!id) return;
+    openConfirmDelete(id, "icmp");
+  });
+  document.getElementById("confirm-del-no").addEventListener("click", function () {
+    deletePendingId = null;
+    deletePendingKind = "icmp";
+    document.getElementById("backdrop-confirm-del").classList.remove("show");
+  });
+  document.getElementById("confirm-del-yes").addEventListener("click", function () {
+    executeConfirmedDelete();
+  });
+  document.getElementById("backdrop-confirm-del").addEventListener("click", function (ev) {
+    if (ev.target.id === "backdrop-confirm-del") {
+      deletePendingId = null;
+      deletePendingKind = "icmp";
+      ev.currentTarget.classList.remove("show");
+    }
+  });
+
+  document.getElementById("backdrop").addEventListener("click", function (ev) {
+    if (ev.target.id === "backdrop") ev.currentTarget.classList.remove("show");
+  });
+  document.getElementById("modal-detail-close").addEventListener("click", function () {
+    document.getElementById("backdrop").classList.remove("show");
+  });
+
+  document.getElementById("dvr-embutido-close").addEventListener("click", function () {
+    closeDvrEmbedded();
+  });
+  document.getElementById("dvr-embutido-janela").addEventListener("click", function () {
+    var u = dvrEmbeddedCurrentUrl;
+    closeDvrEmbedded();
+    nvOpenDvrSecondWindowOnly(u);
+  });
+  document.addEventListener(
+    "keydown",
+    function (ev) {
+      if (ev.key !== "Escape") return;
+      var bd = document.getElementById("dvr-embutido-backdrop");
+      if (bd && bd.style.display === "flex") {
+        ev.preventDefault();
+        closeDvrEmbedded();
+        return;
+      }
+      var bs = document.getElementById("backdrop-sistemas");
+      if (bs && bs.classList.contains("show")) {
+        ev.preventDefault();
+        closeSistemasModal();
+        return;
+      }
+      var bsite = document.getElementById("backdrop-site-add");
+      if (bsite && bsite.classList.contains("show")) {
+        ev.preventDefault();
+        closeSiteMonitorModal();
+        return;
+      }
+      var bec = document.getElementById("backdrop-edit-cam");
+      if (bec && bec.classList.contains("show")) {
+        ev.preventDefault();
+        bec.classList.remove("show");
+      }
+    },
+    true
+  );
+
+  document.getElementById("backdrop-edit").addEventListener("click", function (ev) {
+    if (ev.target.id === "backdrop-edit") ev.currentTarget.classList.remove("show");
+  });
+  document.getElementById("backdrop-edit-cam").addEventListener("click", function (ev) {
+    if (ev.target.id === "backdrop-edit-cam") ev.currentTarget.classList.remove("show");
+  });
+  document.getElementById("edit-cancel").addEventListener("click", function () {
+    document.getElementById("backdrop-edit").classList.remove("show");
+  });
+  document.getElementById("edit-cam-cancel").addEventListener("click", function () {
+    document.getElementById("backdrop-edit-cam").classList.remove("show");
+  });
+  document.getElementById("edit-cam-delete").addEventListener("click", function () {
+    var id = document.getElementById("edit-cam-id").value;
+    if (!id) return;
+    openConfirmDelete(id, "cam");
+  });
+  document.getElementById("edit-save").addEventListener("click", async function () {
+    var id = document.getElementById("edit-id").value;
+    var row = await loadOne(id);
+    if (!row) return;
+    var nm = document.getElementById("edit-name").value.trim();
+    var ip = document.getElementById("edit-ip").value.trim();
+    var intEl = document.getElementById("edit-interval");
+    var httpEl = document.getElementById("edit-http-url");
+    var iv =
+      intEl && intEl.closest(".field").style.display !== "none"
+        ? parseInt(intEl.value, 10)
+        : null;
+    var poll =
+      iv != null && Number.isFinite(iv) && iv >= 10
+        ? iv
+        : row.intervalo_segundos;
+    var httpM = row.http_monitor_url;
+    if (httpEl && httpEl.closest(".field").style.display !== "none") {
+      httpM = httpEl.value.trim() || null;
+    }
+    var payload = {
+      nome: nm,
+      ip_address: ip,
+      poll_interval_seconds: poll,
+      is_enabled: row.monitor_ativo,
+      icon_kind: row.icon_kind || "generic",
+      http_monitor_url: httpM,
+    };
+    try {
+      var res = await fetch("/network-equipment/" + encodeURIComponent(id), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      var data = await res.json().catch(function () { return null; });
+      if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);
+      document.getElementById("backdrop-edit").classList.remove("show");
+      await reloadAllRemote();
+    } catch (e) {
+      alert(e.message || String(e));
+    }
+  });
+
+  document.getElementById("edit-cam-save").addEventListener("click", async function () {
+    var id = document.getElementById("edit-cam-id").value.trim();
+    if (!id) return;
+    var nm = document.getElementById("edit-cam-name").value.trim();
+    var ip = document.getElementById("edit-cam-ip").value.trim();
+    if (!ip) {
+      alert("Indique o IP ou hostname.");
+      return;
+    }
+    try {
+      var resG = await fetch("/cameras/" + encodeURIComponent(id), {
+        headers: { Accept: "application/json" },
+      });
+      var cam = await resG.json().catch(function () { return null; });
+      if (!resG.ok)
+        throw new Error(
+          cam && typeof cam.detail === "string" ? cam.detail : resG.statusText || "HTTP " + resG.status
+        );
+      var payload = {
+        name: nm || null,
+        ip_address: ip,
+        http_port: cam.http_port != null ? cam.http_port : 80,
+        rtsp_url: cam.rtsp_url,
+        onvif_endpoint: cam.onvif_endpoint,
+        is_enabled: !!cam.is_enabled,
+        protocol: cam.protocolo,
+        canal_local: cam.canal_local,
+        canal_remoto: cam.canal_remoto,
+        buffer_seconds: cam.buffer_segundos,
+        tipo_pagina: cam.tipo_pagina,
+        serial_number: cam.numero_serie,
+        rtsp_tcp_port: cam.porta_tcp_midia,
+        device: cam.dispositivo,
+        monitor_hub_scope: cam.monitor_hub_scope || "local",
+      };
+      var resP = await fetch("/cameras/" + encodeURIComponent(id), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      var data = await resP.json().catch(function () { return null; });
+      if (!resP.ok)
+        throw new Error(
+          data && typeof data.detail === "string" ? data.detail : resP.statusText || "HTTP " + resP.status
+        );
+      document.getElementById("backdrop-edit-cam").classList.remove("show");
+      await reloadAllRemote();
+    } catch (e) {
+      alert(e.message || String(e));
+    }
+  });
+
+  document.getElementById("backdrop-site-add").addEventListener("click", function (ev) {
+    if (ev.target.id === "backdrop-site-add") closeSiteMonitorModal();
+  });
+  document.getElementById("modal-site-cancel").addEventListener("click", closeSiteMonitorModal);
+  document.getElementById("modal-site-form").addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    var msg = document.getElementById("modal-site-form-msg");
+    var rawUrl = document.getElementById("modal-site-url").value.trim();
+    var fullUrl = normalizeUserHttpUrl(rawUrl);
+    var host = hostFromHttpUrl(fullUrl);
+    if (!host || !fullUrl) {
+      msg.style.display = "block";
+      msg.className = "feedback bad";
+      msg.textContent = "Indique uma URL válida (http ou https).";
+      return;
+    }
+    var nama = document.getElementById("modal-site-name").value.trim();
+    var interval = parseInt(document.getElementById("modal-site-interval").value, 10);
+    if (!Number.isFinite(interval) || interval < 10) interval = 60;
+    var payload = {
+      nome: nama || host || "Site",
+      ip_address: host,
+      poll_interval_seconds: interval,
+      is_enabled: true,
+      icon_kind: "site",
+      http_monitor_url: fullUrl,
+      monitor_hub_scope: categoryHubScope,
+    };
+    try {
+      var res = await fetch("/network-equipment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      var data = await res.json().catch(function () { return null; });
+      if (!res.ok)
+        throw new Error(
+          data && typeof data.detail === "string" ? data.detail : res.statusText || "HTTP " + res.status
+        );
+      closeSiteMonitorModal();
+      await reloadAllRemote();
+    } catch (e) {
+      msg.style.display = "block";
+      msg.className = "feedback bad";
+      msg.textContent = e.message || String(e);
+    }
+  });
+
+  /** @param {any[]} icmpRows */
+  function downloadCsvIcmpSlice(icmpRows, fileSuffix) {
+    var hdr =
+      "\uFEFFNome;Estado;IP ou DNS;Monitor ativo;Segundos neste estado;Total online(s);Total offline(s);Ultimo ping UTC\r\n";
+    var rowsOut = [];
+    if (Array.isArray(icmpRows)) {
+      for (var i = 0; i < icmpRows.length; i++) {
+        var r = icmpRows[i];
+        rowsOut.push(
+          [
+            "\"" + String(r.nome || "").replace(/\"/g, '""') + "\"",
+            estadoLabel(r.estado),
+            String(r.ip_ou_dns || ""),
+            r.monitor_ativo ? "sim" : "nao",
+            String(r.tempo_actual_estado_segundos != null ? Math.round(r.tempo_actual_estado_segundos) : ""),
+            String(r.total_online_segundos != null ? r.total_online_segundos : ""),
+            String(r.total_offline_segundos != null ? r.total_offline_segundos : ""),
+            String(r.ultima_verificacao_utc || ""),
+          ].join(";")
+        );
+      }
+    }
+    var blob = new Blob([hdr + rowsOut.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    var d = new Date();
+    var suf = fileSuffix ? "-" + String(fileSuffix).replace(/[^\w\-]+/g, "_") : "";
+    var fn =
+      "neovision-monitoramento" +
+      suf +
+      "-" +
+      d.getFullYear() +
+      ("0" + (d.getMonth()+1)).slice(-2) +
+      ("0" + d.getDate()).slice(-2) +
+      ".csv";
+    a.download = fn;
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 400);
+  }
+
+  document.getElementById("btn-backup-export").addEventListener("click", async function () {
+    try {
+      var res = await fetch("/network-equipment/backup", { headers: { Accept: "application/json" } });
+      if (!res.ok) {
+        var tx = await res.text().catch(function () { return ""; });
+        throw new Error(tx || "HTTP " + res.status);
+      }
+      var data = await res.json();
+      var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" });
+      
+      var d = new Date();
+      var fn = "neovision-rede-backup-" +
+               d.getFullYear() +
+               ("0" + (d.getMonth() + 1)).slice(-2) +
+               ("0" + d.getDate()).slice(-2) + ".json";
+               
+      // Ponte para Desktop (pywebview)
+      if (window.pywebview && window.pywebview.api && window.pywebview.api.save_file_dialog) {
+        var reader = new FileReader();
+        reader.onloadend = function() {
+          var base64data = reader.result.split(',')[1];
+          window.pywebview.api.save_file_dialog(fn, base64data);
+        };
+        reader.readAsDataURL(blob);
+        return;
+      }
+
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = fn;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 3000);
+    } catch (e) {
+      alert("Falha ao exportar backup: " + (e.message || String(e)));
+    }
+  });
+
+  var backupFileInput = document.getElementById("nv-backup-file-input");
+  document.getElementById("btn-backup-import").addEventListener("click", function () {
+    backupFileInput.value = "";
+    backupFileInput.click();
+  });
+
+  backupFileInput.addEventListener("change", async function () {
+    var f = backupFileInput.files && backupFileInput.files[0];
+    if (!f) return;
+    var replaceAll = false;
+    try {
+      replaceAll = window.confirm(
+        "Substituir TODA a lista antes de importar?\n\n" +
+          "OK = apagar equipamentos actuais e importar só o ficheiro (PC novo).\n" +
+          "Cancelar = juntar (actualiza pelo mesmo IP, adiciona novos)."
+      );
+    } catch (err) {
+      backupFileInput.value = "";
+      return;
+    }
+    try {
+      var txt = await f.text();
+      var parsed = JSON.parse(txt);
+      if (!parsed || typeof parsed !== "object") throw new Error("JSON inválido.");
+      var dataPayload = parsed;
+      if (!parsed.format || parsed.format !== "neovision-network-equipment") {
+        if (Array.isArray(parsed.hosts)) {
+          dataPayload = {
+            format: "neovision-network-equipment",
+            version: 1,
+            exported_utc: parsed.exported_utc || null,
+            hosts: parsed.hosts,
+          };
+        } else throw new Error("Ficheiro não é backup NeoVision (esperado format + hosts).");
+      }
+      var res = await fetch("/network-equipment/backup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ replace_all: replaceAll, data: dataPayload }),
+      });
+      var out = await res.json().catch(function () { return {}; });
+      if (!res.ok) {
+        var det = typeof out.detail === "string" ? out.detail : String(res.status);
+        throw new Error(det);
+      }
+      alert(
+        "Importação concluída: " +
+          out.inserted +
+          " novos, " +
+          out.updated +
+          " actualizados" +
+          (out.replaced_all ? " (lista anterior removida)." : ".")
+      );
+      reloadAllRemote();
+    } catch (e) {
+      alert(e.message || String(e));
+    } finally {
+      backupFileInput.value = "";
+    }
+  });
+
+  document.getElementById("btn-relatorio").addEventListener("click", async function () {
+    try {
+      var res = await fetch("/network-equipment", { headers: { Accept: "application/json" } });
+      var j = await res.json().catch(function () { return []; });
+      if (!res.ok) throw new Error(String(res.status));
+      downloadCsvIcmpSlice(Array.isArray(j) ? j : [], "icmp-todos");
+    } catch (e) {
+      alert(e.message || String(e));
+    }
+  });
+
+  document.getElementById("btn-category-relatorio").addEventListener("click", function () {
+    if (!catKind || catKind === "camera") return;
+    try {
+      downloadCsvIcmpSlice(icmpRowsForCategoryView(catKind), "icmp-" + catKind);
+    } catch (e) {
+      alert(e.message || String(e));
+    }
+  });
+
+  function toggleTableBoth() {
+    var sec = document.getElementById("table-section");
+    if (!sec) return;
+    var hiding = sec.style.display !== "none";
+    sec.style.display = hiding ? "none" : "block";
+    syncTableToolbarLabels(!hiding);
+    if (!hiding) syncTableContents();
+  }
+
+  document.getElementById("btn-toggle-table").addEventListener("click", toggleTableBoth);
+  document.getElementById("btn-category-table").addEventListener("click", toggleTableBoth);
+
+  document.getElementById("btn-category-back").addEventListener("click", goHub);
+
+  document.getElementById("btn-category-add").addEventListener("click", function () {
+    if (!catKind) return;
+    if (catKind === "camera") {
+      openCameraAddModal();
+      return;
+    }
+    if (catKind === HUB_SITE_STRIP_KIND) {
+      openSiteMonitorModal();
+      return;
+    }
+    openModalAdd(catKind);
+  });
+
+  var hubIcmp = document.getElementById("btn-hub-add-icmp");
+  if (hubIcmp) {
+    hubIcmp.addEventListener("click", function () {
+      openModalAdd("generic", "local");
+    });
+  }
+
+  buildIconStripAdd();
+  buildIconStripOnline();
+  buildModalIconPicker();
+  reloadAllRemote();
+  setInterval(reloadAllRemote, 6000);
+})();
+  </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
-<!DOCTYPE html>
-<html lang="pt">
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -93,34 +93,6 @@
         <a class="cta" href="/painel/cameras">
           <strong>Página Câmeras do painel</strong>
           <span>Atalhos lista JSON, Swagger e estado</span>
-        </a>
-      </div>
-    </section>
-
-    <section class="card">
-      <h3>Estás longe · app Flutter e Firebase · PC onde corre o NeoVision</h3>
-      <p>Exemplo: vives noutro <strong>estado</strong> ou país; em casa há um computador sempre ligado com a API NeoVision (uvicorn); queres usar um <strong>aplicativo Flutter</strong> e <strong>Firebase</strong>.</p>
-      <p>A API só é alcançável na Internet se existir um caminho redesenhado até ela — o Flutter <strong>não</strong> vai “saltar até <code>127.0.0.1</code> dessa casa” sozinho. O papel mais comum do <strong>Firebase</strong> no teu lado mobile é:</p>
-      <ul class="links">
-        <li><strong>Firebase Authentication</strong> — quem pode abrir portão ou ver alertas (conta Google/email).</li>
-        <li><strong>Firebase Cloud Messaging (FCM)</strong> — empurrar alertas («portão», «alarme», «câmera offline») para o telemóvel mesmo com a app fechada.</li>
-        <li><strong>Firestore / Remote Config</strong> (opcional) — gravar comandos ou o URL da API atual (ex.: quando mudas de túnel), sem dar HTTP direto de telemóvel ao PC sem infraestrutura.</li>
-      </ul>
-      <p><strong>Com o NeoVision mesmo a correr apenas em LAN</strong>, habitualmente combinás um destes padrões:</p>
-      <ul class="links">
-        <li><strong>Túnel HTTPS</strong> (ex.: Cloudflare Tunnel, modelo semelhante a ngrok) no PC onde corre a API: obténs uma URL público <code>https://algo.example.com</code> que faz forward para <code>http://127.0.0.1:PORTA</code>. Na app Flutter (pacote <code>http</code> ou Dio) chamas esse URL — porta 443, encriptado. No servidor continua igual; na frente garantes firewall e autenticação forte.</li>
-        <li><strong>VPN tipo mesh</strong> (Tailscale, ZeroTier, WireGuard): o telemóvel parece estar na rede virtual e chamas por IP interno com regras de acesso estritas.</li>
-        <li><strong>Backend intermédio</strong>: um pequeno serviço no Firebase (Cloud Functions) ou VPS que valida JWT do utilizador e reencaminha para a casa apenas se autorizado — melhor quando queres limitar comandos antes de encostar ao PC.</li>
-      </ul>
-      <p>Para <strong>câmeras e RTSP pesado</strong>, muitos sistemas fazem ingest na nuvem ou relay dedicado — isso já é projeto à parte sobre o modelo de vídeo.</p>
-      <div class="card-actions two">
-        <a class="cta primary" href="https://firebase.google.com/docs/flutter/setup" target="_blank" rel="noopener">
-          <strong>Firebase + Flutter</strong>
-          <span>Documentação oficial (Auth, opcional Hosting / FCM)</span>
-        </a>
-        <a class="cta" href="/docs" target="_blank" rel="noopener">
-          <strong>Pontos de integração NeoVision</strong>
-          <span>OpenAPI — os mesmos <code>/health</code>, <code>/automation/…</code>, etc.</span>
         </a>
       </div>
     </section>

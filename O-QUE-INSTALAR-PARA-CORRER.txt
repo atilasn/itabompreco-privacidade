@@ -22,11 +22,12 @@ OBRIGATORIO OU FORTEMENTE RECOMENDADO PARA DESENVOLVIMENTO
        Na instalacao marque “Add Python to PATH”.
        Confirmar num terminal:  python --version
 
- [ ] MySQL Server 8 (mesmo pc ou outro servidor acessível na rede)
-       — https://dev.mysql.com/downloads/mysql/
-       Criar base e utilizador; importar modelo:
-         mysql -u root -p < db/schema.sql   (na raiz do repo; ajuste credenciais)
-       Configuracao da API / Desktop: variaveis NEOVISION_MYSQL_* ou appsettings.json
+ [ ] Base de dados para a API (escolha um):
+       • SQLite (PADRÃO) — ficheiro local NeoVisionData\neovision.sqlite (sem servidor).
+       • MySQL 8 opcional para partilhar a mesma base com o cliente WPF:
+         https://dev.mysql.com/downloads/mysql/
+         mysql -u root -p < db/schema.sql ; depois definir set NEOVISION_DB=mysql
+         e credenciais NEOVISION_MYSQL_* (Desktop: appsettings.json)
 
  [ ] Drivers / firewall: permitir a porta da API e do MySQL na rede LOCAL se testar outros equipamentos.
 
@@ -52,7 +53,12 @@ Arrancar a API:
   (ou manualmente:  python -m uvicorn app.main:app --host 127.0.0.1 --port 8080)
 
 Pacotes principais já listados em requirements.txt: FastAPI, Uvicorn, OpenCV headless,
-NumPy, PyMySQL, etc. Na primeira corrida pode ser preciso estar online para o pip resolver dependencias.
+NumPy, PyMySQL (só quando NEOVISION_DB=mysql), etc.
+
+Variáveis de ambiente sobre a base (NeoVision IA\src\NeoVision.AI):
+  Por defeito: NEOVISION_DB=sqlite  (ou omitido) → ficheiro NeoVisionData\neovision.sqlite
+  Pasta alternativa do .sqlite: NEOVISION_SQLITE_PATH=C:\caminho\neovision.sqlite
+  Para MySQL: set NEOVISION_DB=mysql e NEOVISION_MYSQL_HOST etc.
 
 
 --------------------------------------------------------------------------------
@@ -74,13 +80,48 @@ Ou use o gerador para pasta portavel (scripts em build\) — ver build\INSTALACA
 
 
 --------------------------------------------------------------------------------
-APLICACAO MOVEL Flutter (opcional)
+PROGRAMA DE MESA (só PYTHON — FastAPI + janela pywebview)
 --------------------------------------------------------------------------------
 
-  Flutter SDK canal stable — https://docs.flutter.dev/get-started/install/windows
-  Pasta:  src\neo_vision_mobile
-  Comando:  flutter pub get  &&  flutter run
+Requisitos: Python 3.10+, WebView2 no Windows (normamente já instalado). MySQL igual à API.
 
+Na pasta NeoVision-IA\src\NeoVision.AI:
+
+  pip install -r requirements-desktop-sistema.txt
+  python desktop_sistema.py
+
+Abre uma janela com o painel em http://127.0.0.1:<porta>/painel (porta própria, ex.: 12738).
+
+Para gerar exe + pasta distribuível:
+
+  powershell -ExecutionPolicy Bypass -File .\build\publish-sistema-desktop-python.ps1
+
+Saída: dist\NeoVision-Sistema\NeoVision-Sistema.exe
+
+Instalador (.exe de setup) para outro PC — ver passo-a-paso:
+
+    build\COMO-INSTALAR-NO-MEU-PC.txt
+
+Ou (na raiz do repo):
+
+  Duplo-clique:  build\CRIAR-INSTALADOR-NeoVision-Sistema.bat
+
+Ou PowerShell só após já ter gerado PyInstaller:
+
+  powershell -ExecutionPolicy Bypass -File .\build\criar-instalador-sistema.ps1
+
+Gera por exemplo dist\installer\NeoVision-Sistema-Setup-0.2.0.exe (instala em Pasta de Programas
+do utilizador). Inno Setup 6: instalado manualmente, ou winget, ou mesmo batch:
+
+  build\CRIAR-INSTALADOR-winget-Inno.bat
+
+
+--------------------------------------------------------------------------------
+APLICACAO MOVEL (fora da fase actual)
+--------------------------------------------------------------------------------
+
+   O projeto em src\neo_vision_mobile (Flutter) fica para uma fase posterior;
+   ignorar por ora — prioridade: API Python, painel e ambiente desktop.
 
 --------------------------------------------------------------------------------
 O QUE NÃO E OBRIGATORIO SÓ PARA “VER” A API COM NAVEGADOR

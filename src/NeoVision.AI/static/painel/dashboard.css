@@ -155,6 +155,7 @@ a.cta:hover {
 }
 a.cta strong { font-size: 1.02rem; color: var(--nv); }
 a.cta span { font-size: 0.82rem; color: var(--muted); line-height: 1.4; }
+/* Estilo “principal” antigo: reservado só se algum link usar .primary noutras páginas */
 a.cta.primary {
   background: linear-gradient(145deg, var(--nv), #154a7a);
   color: #f8fafc;
@@ -197,6 +198,19 @@ body.painel-home .grid-cta-dashboard > a.cta span {
   font-size: 0.9rem;
   line-height: 1.45;
   max-width: 24rem;
+}
+body.painel-home .grid-cta-dashboard > a.cta:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 36px rgba(13, 59, 102, 0.22);
+  border-color: transparent;
+  background: linear-gradient(145deg, var(--nv), #154a7a);
+  color: #f8fafc;
+}
+body.painel-home .grid-cta-dashboard > a.cta:hover strong {
+  color: #fff;
+}
+body.painel-home .grid-cta-dashboard > a.cta:hover span {
+  color: rgba(255, 255, 255, 0.92);
 }
 
 /* Formulário página adicionar câmera */
@@ -364,26 +378,31 @@ table.camera-table th {
   gap: 6px;
   width: 100%;
   margin-top: 0.5rem;
+  /* Altura explícita para as linhas 1fr expandirem (quadros grandes no Tempo real) */
+  height: calc(100vh - 11.5rem);
+  min-height: 300px;
+  max-height: min(calc(100vh - 5rem), 1800px);
+  align-content: stretch;
 }
 .mosaic-layout-1 {
   grid-template-columns: minmax(0, 1fr);
-  grid-auto-rows: minmax(220px, 42vh);
+  grid-template-rows: 1fr;
 }
 .mosaic-layout-3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-auto-rows: minmax(140px, 22vh);
+  grid-template-rows: 1fr;
 }
 .mosaic-layout-9 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-auto-rows: minmax(120px, 18vh);
+  grid-template-rows: repeat(3, 1fr);
 }
 .mosaic-layout-12 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-auto-rows: minmax(100px, 16vh);
+  grid-template-rows: repeat(3, 1fr);
 }
 .mosaic-layout-18 {
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  grid-auto-rows: minmax(90px, 14vh);
+  grid-template-rows: repeat(3, 1fr);
 }
 .mosaic-cell {
   border: 1px solid var(--line);
@@ -412,6 +431,25 @@ table.camera-table th {
   justify-content: center;
   font-size: 1.5rem;
   opacity: 0.45;
+  min-height: 0;
+}
+.mosaic-video-wrap {
+  flex: 1;
+  min-height: 0;
+  margin: 0.25rem 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mosaic-live {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  vertical-align: middle;
 }
 .mosaic-caption {
   font-size: 0.76rem;

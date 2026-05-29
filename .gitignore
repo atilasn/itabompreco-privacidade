@@ -9,6 +9,9 @@ dist/
 .vs/
 *.cache
 
+# Dados locais SQLite (API em modo pré-definido)
+NeoVisionData/
+
 # Python
 .venv/
 __pycache__/

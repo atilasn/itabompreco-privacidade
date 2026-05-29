@@ -3,6 +3,8 @@ setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>&1
 cd /d "%~dp0"
 title NeoVision - API
+REM Base: SQLite em NeoVisionData\neovision.sqlite (omitir NEOVISION_DB ou =sqlite). Para MySQL: set NEOVISION_DB=mysql
+if not defined NEOVISION_DB set "NEOVISION_DB=sqlite"
 if not defined NEOVISION_MYSQL_HOST set "NEOVISION_MYSQL_HOST=127.0.0.1"
 if not defined NEOVISION_MYSQL_PORT set "NEOVISION_MYSQL_PORT=3306"
 if not defined NEOVISION_MYSQL_USER set "NEOVISION_MYSQL_USER=neovision"
