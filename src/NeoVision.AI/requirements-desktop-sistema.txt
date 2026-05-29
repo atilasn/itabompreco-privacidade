@@ -1,3 +1,0 @@
-# Ambiente gráfico (janela) — adicionado ao servidor FastAPI já em requirements.txt
--r requirements.txt
-pywebview>=5.5

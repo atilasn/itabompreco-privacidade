@@ -1,1 +1,0 @@
-# NeoVision AI service
